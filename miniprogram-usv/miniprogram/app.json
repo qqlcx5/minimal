@@ -1,0 +1,21 @@
+{
+    "pages": [
+        "pages/index/index",
+        "pages/map/map"
+    ],
+    "window": {
+        "backgroundColor": "#F6F6F6",
+        "backgroundTextStyle": "light",
+        "navigationBarBackgroundColor": "#F6F6F6",
+        "navigationBarTitleText": "USV",
+        "navigationBarTextStyle": "black",
+        "pageOrientation": "landscape"
+    },
+    "usingComponents": {
+        "van-slider": "./components/dist/slider/index"
+    },
+    "sitemapLocation": "sitemap.json",
+    "style": "v2",
+
+    "permission": {"scope.userLocation": {"desc": "使用定位功能"}, "scope.userFuzzyLocation": {"desc": "使用定位功能"}}
+}

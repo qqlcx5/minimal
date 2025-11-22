@@ -1,0 +1,75 @@
+<view class="containerRow">
+  <view class="fixedHeight">
+    <text wx:if="{{userAccelerometer}}" class="page-body-title">当前舵角: {{UserSetRudder}}</text>
+  </view>
+  <view class="autoFullHeight">
+    <view class="containerColumn">
+      <view class="autoFullWidth">
+        <map 
+          id="mapId"
+          class="map"
+          latitude="24.5945"
+          longitude="118.0835"
+          scale="{{mapscale}}"
+          bindregionchange="onRegionChange"
+          bindmarkertap="onMarkerTap"
+          bindtap="onMapTap"
+          markers="{{markers}}"
+          polyline="{{polyline}}"
+          style="position: absolute; left: 4rpx; top: 2rpx">
+          <view class="map-button">
+            <view class="map-button1">
+              <switch checked="{{EnableAuto}}"  class="transparent-button" bindchange="autoChange">自动 </switch>
+              <button class="transparent-button" bindtap="addWayPoint">添加点</button>
+              <button class="transparent-button" bindtap="deleteWayPoint">删除点</button>
+              <button class="transparent-button" bindtap="showsettings">设置</button>
+            </view>
+            <view wx:if="{{ShowSettings}}" class="map-settings">
+              <button class="transparent-button" bindtap="deleteAllWayPoint">删除所有路径</button>
+              <button class="transparent-button" bindtap="forceSetZPoint">设置舵机零点</button>
+              <button class="transparent-button" bindtap="calibINS">标定磁力计</button>
+              <switch class="transparent-button" checked="userAccelerometer" bindchange="userAccelerometerChange">加速度计</switch>
+            </view>
+          </view>
+        </map>
+      </view>
+      <view class="fixedWidth">
+        <view class="power-slider">
+          <van-slider max= "120"  value="{{ powerslidervalue }}" active-color="#f8f8f8" inactive-color="#f8f8f8" use-button-slot vertical bar-height="100"  bind:drag="onPowerDrag">
+            <view class="power-button" slot="button" style="background-color:{{powerbuttoncolor}};" >{{UserSetPower}}</view>
+          </van-slider> 
+        </view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{!userAccelerometer}}" class="fixedHeight">
+    <view class="rudder-slider">
+      <van-slider max= "120"  value="{{ rudderslidervalue }}" active-color="#f8f8f8" inactive-color="#f8f8f8" use-button-slot bar-height="60"  bind:drag="onRudderDrag">
+        <view class="rudder-button" slot="button" style="background-color:{{rudderbuttoncolor}};">{{CurRudder}}</view>
+      </van-slider> 
+    </view>
+  </view>
+  <view class="fixedHeight">
+    <text class="page-info">功率: {{CMD25_Data2Power}}W</text>
+    <text class="page-info">电压: {{CMD23_Data2BatteryVoltage}}V</text>
+    <text class="page-info">速度: {{SpeedKnot}}</text>
+    <text class="page-info">运行时间: {{CMD27_Data6SingleMin}}</text>
+    <text wx:if="{{LocalOK}}"  style="background-color:#38ff92;">主控</text>
+    <text wx:if="{{!LocalOK}}" style="background-color:#ff7043;">主控</text>
+    <text wx:if="{{USVOnline}}"  style="background-color:#38ff92;">基站</text>
+    <text wx:if="{{!USVOnline}}" style="background-color:#ff7043;">基站</text>
+    <text wx:if="{{RemoteOK}}" style="background-color:#38ff92;">遥控</text>
+    <text wx:if="{{!RemoteOK}}" style="background-color:#ff7043;">遥控</text>
+    <text class="page-info-right">{{RxCount}}</text>
+  </view>
+</view>
+
+
+            
+
+
+
+
+
+            
+

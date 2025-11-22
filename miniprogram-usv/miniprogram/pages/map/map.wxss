@@ -1,0 +1,138 @@
+page {
+  width: 100%;
+  height: 100%;
+}
+.containerRow 
+{
+  width: 100%;
+  height: auto;
+  min-height: 100%;
+  background-color: #f8f8f8;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+/* 固定高度 */
+.fixedHeight
+{
+  flex: 0 0 auto;
+}/* 自适应高度 */
+.autoFullHeight
+{
+  flex: 1 1 auto;
+  position: relative;
+}
+.containerColumn
+{
+  background-color: transparent;
+  position: absolute;
+  display: flex;
+  flex-direction: row;
+  top: 0;right: 0;bottom: 0;left: 0;
+}
+/* 固定宽度 */
+.fixedWidth
+{
+  flex: 0 0 auto;
+}
+/* 自适应宽度 */
+.autoFullWidth
+{
+  flex: 1 1 auto;
+  position: relative;
+}
+.map {
+  display: flex;position: absolute;top: 0;right: 0;bottom: 0;left: 0;
+  width: 100%;
+  height: 100%;
+} 
+
+.page-body-title{
+   display: inline-table;
+   width: 150px;
+}
+.page-info{
+  display: inline-flex;width: 100px;
+}
+.page-checkbox{
+ justify-content: center;
+  display: inline-table;width: 100px;
+}
+
+
+.page-info-right{
+  right: 0px;
+  position: absolute;
+  display: inline-flex;
+  width: 100px;
+  justify-content:center;
+}
+
+.power-info{
+  display: inline-flex;width: 90px;
+  font-size: 25px;
+  justify-content: center;
+}
+.power-slider{
+    border-radius: 0px;
+    height: 80%;
+    top: 10%;
+    position: relative;
+    justify-content: center;
+}
+.power-button{
+    align-items: center;
+    padding-left: 1px;
+    border-radius: 8px;
+    display: flex;
+    size: 100%;
+    width: 80px;
+    height: 60px;
+    font-size: 20px;
+}
+.rudder-slider{
+  border-radius: 0px;
+  width: 50%;
+  left: 5%;
+  position: relative;
+  justify-content: center;
+}
+.rudder-button{
+  justify-content: center;
+  border-radius: 8px;
+  background-color: gray;
+  display: flex;
+  size: 100%;
+  width: 60px;
+  height: 50px;
+  font-size: 20px;
+}
+.transparent-button:not([size="mini"]){
+  width: 100%;
+  margin-top: 20px;
+  padding: 0;
+  font-size: 20px;
+  font-weight: lighter;
+}
+.map-button{
+  position: absolute;
+  background-color: transparent;
+  display: flex;
+  flex-direction: row;
+}
+.map-button1{
+  margin-left: 20px;
+  position: relative;
+  background-color: transparent;
+  width: 98px;
+  display: flex;
+  flex-direction: column;
+}
+.map-settings{
+  margin-left: 20px;
+  position: relative;
+  background-color: transparent;
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+}

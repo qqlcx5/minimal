@@ -1,0 +1,15 @@
+<!--pages/index/index.wxml-->
+<scroll-view class="device_list" scroll-y scroll-with-animation>
+  <view wx:for="{{devices}}" wx:key="index"
+   data-device-id="{{item.deviceId}}"
+   data-name="{{item.name || item.localName}}"
+   bindtap="createBLEConnection" 
+   class="device_item"
+   hover-class="device_item_hover">
+    <view style="font-size: 16px; color: #333;">{{item.name}}</view>
+    <view style="font-size: 10px">信号强度: {{item.RSSI}}dBm ({{utils.max(0, item.RSSI + 100)}}%)</view>
+    <view style="font-size: 10px">UUID: {{item.deviceId}}</view>
+    <view style="font-size: 10px">Service数量: {{utils.len(item.advertisServiceUUIDs)}}</view>
+  </view>
+  <button bindtap="skip">跳过</button>
+</scroll-view>
