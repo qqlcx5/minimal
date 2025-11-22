@@ -5,9 +5,9 @@ import { tabBar } from './src/tabbar/config'
 export default defineUniPages({
   globalStyle: {
     navigationStyle: 'default',
-    navigationBarTitleText: 'minimal',
-    navigationBarBackgroundColor: '#f8f8f8',
-    navigationBarTextStyle: 'black',
+    navigationBarTitleText: 'USV 控制',
+    navigationBarBackgroundColor: '#667eea',
+    navigationBarTextStyle: 'white',
     backgroundColor: '#FFFFFF',
   },
   easycom: {

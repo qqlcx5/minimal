@@ -20,7 +20,7 @@ export const TABBAR_STRATEGY_MAP = {
 // 如果是使用 NO_TABBAR(0)，nativeTabbarList 和 customTabbarList 都不生效(里面的配置不用管)
 // 如果是使用 NATIVE_TABBAR(1)，只需要配置 nativeTabbarList，customTabbarList 不生效
 // 如果是使用 CUSTOM_TABBAR(2,3)，只需要配置 customTabbarList，nativeTabbarList 不生效
-export const selectedTabbarStrategy = TABBAR_STRATEGY_MAP.CUSTOM_TABBAR_WITH_CACHE
+export const selectedTabbarStrategy = TABBAR_STRATEGY_MAP.NO_TABBAR
 
 type NativeTabBarItem = TabBar['list'][number]
 
@@ -70,27 +70,6 @@ export const customTabbarList: CustomTabBarItem[] = [
     iconType: 'uniUi',
     icon: 'home',
     // badge: 'dot',
-  },
-  {
-    text: '商品',
-    pagePath: 'pages/product/list',
-    iconType: 'uniUi',
-    icon: 'shop',
-    // badge: 10,
-  },
-  {
-    text: '取件',
-    pagePath: 'pages/pickup/list',
-    iconType: 'uniUi',
-    icon: 'calendar',
-    // badge: 5,
-  },
-  {
-    pagePath: 'pages/me/me',
-    text: '我的',
-    iconType: 'uniUi',
-    icon: 'contact',
-    // badge: 100,
   },
   // 其他类型演示
   // 1、uiLib

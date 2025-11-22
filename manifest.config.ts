@@ -131,6 +131,15 @@ export default defineManifestConfig({
     // styleIsolation: 'shared',
     usingComponents: true,
     // __usePrivacyCheck__: true,
+    permission: {
+      'scope.userLocation': {
+        desc: '获取您的位置信息，用于地图显示和导航',
+      },
+      'scope.userFuzzyLocation': {
+        desc: '获取您的大致位置信息，用于地图显示',
+      },
+    },
+    requiredPrivateInfos: ['getLocation'],
   },
   'mp-alipay': {
     usingComponents: true,
