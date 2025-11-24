@@ -62,6 +62,12 @@ export default defineConfig({
     ],
     ['pt-safe', { 'padding-top': 'env(safe-area-inset-top)' }],
     ['pb-safe', { 'padding-bottom': 'env(safe-area-inset-bottom)' }],
+    ['pl-safe', { 'padding-left': 'env(safe-area-inset-left)' }],
+    ['pr-safe', { 'padding-right': 'env(safe-area-inset-right)' }],
+    ['ml-safe', { 'margin-left': 'env(safe-area-inset-left)' }],
+    ['mr-safe', { 'margin-right': 'env(safe-area-inset-right)' }],
+    ['mt-safe', { 'margin-top': 'env(safe-area-inset-top)' }],
+    ['mb-safe', { 'margin-bottom': 'env(safe-area-inset-bottom)' }],
   ],
   theme: {
     colors: {
