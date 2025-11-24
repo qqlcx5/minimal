@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { MapMarker, Polyline } from '@/types/usv'
+import type { Polyline, WayPoint } from '@/types/usv'
 import { onLoad } from '@dcloudio/uni-app'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useUsvStore } from '@/store/usv'
 import { compute } from '@/utils/crcCalc'
 import { clearInstructions, endUpdateWayPoint, getEnableManual, getTxBuf, removeInstruction, setCalibINS, setEnableManual, setForceSetZPoint, startUpdateWayPoint, addWayPoint as stm32AddWayPoint, deleteAllWayPoint as stm32DeleteAllWayPoint, deleteWayPoint as stm32DeleteWayPoint, modifyWayPoint as stm32ModifyWayPoint, updateWayPoint as stm32UpdateWayPoint } from '@/utils/stm32Com'
@@ -29,7 +29,7 @@ const characteristicId = ref('')
 let shipid = 0
 
 // 定时器和状态
-let interval: number | null = null
+let interval: ReturnType<typeof setInterval> | null = null
 let rxTimeOut = 0
 let timeout = 0
 let rudderdragtime = 0
@@ -59,7 +59,7 @@ const USVOnline = ref(false)
 const RxCount = ref(0)
 
 // 地图数据
-const markers = ref<MapMarker[]>([])
+const markers = ref<any[]>([])
 const polyline = ref<Polyline[]>([
   {
     points: [],
@@ -124,13 +124,15 @@ function startInter() {
  */
 function writeBLECharacteristicValue() {
   const ship = usvStore.ships[shipid]
-  const arr = getTxBuf(shipid, ship.power, -ship.rudder)
+  // 使用 UserSetPower 而不是 ship.power，与原始代码保持一致
+  const arr = getTxBuf(shipid, UserSetPower.value, -ship.rudder)
 
+  const buffer = new Uint8Array(arr).buffer
   uni.writeBLECharacteristicValue({
     deviceId: deviceId.value,
     serviceId: serviceId.value,
     characteristicId: characteristicId.value,
-    value: new Uint8Array(arr).buffer,
+    value: buffer as any,
     fail: (res) => {
       timeout++
       if (timeout > 1) {
@@ -247,11 +249,12 @@ function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: stri
  */
 function onBLEDateReceiverd() {
   uni.onBLECharacteristicValueChange((characteristic) => {
-    if (characteristic.value.byteLength < 5) {
+    const buffer = characteristic.value as unknown as ArrayBuffer
+    if (buffer.byteLength < 5) {
       return
     }
 
-    const view = new DataView(characteristic.value)
+    const view = new DataView(buffer)
     const arr: number[] = []
     for (let i = 0; i < view.byteLength - 2; i++) {
       arr.push(view.getInt8(i))
@@ -402,7 +405,7 @@ function updateWayPointLocal(id: number, lng: number, lat: number) {
   })
 
   if (!ok) {
-    const point: MapMarker = {
+    const point: WayPoint = {
       id,
       anchor: { x: 0.5, y: 1 },
       iconPath: '/static/images/reddotmark.png',
@@ -461,8 +464,9 @@ function onPowerDrag(event: any) {
     color = '#00b26a'
   }
 
-  usvStore.ships[shipid].power = Number((result * 2).toFixed(0))
-  UserSetPower.value = usvStore.ships[shipid].power
+  const powerValue = Number((result * 2).toFixed(0))
+  usvStore.ships[shipid].power = powerValue
+  UserSetPower.value = powerValue
   powerslidervalue.value = event.detail.value
   powerbuttoncolor.value = color
 }
@@ -493,9 +497,10 @@ function onRudderDrag(event: any) {
     color = '#ff7043'
   }
 
-  usvStore.ships[shipid].rudder = Number((-result * 2).toFixed(0))
+  const rudderValue = Number((-result * 2).toFixed(0))
+  usvStore.ships[shipid].rudder = rudderValue
   rudderslidervalue.value = event.detail.value
-  CurRudder.value = usvStore.ships[shipid].rudder
+  CurRudder.value = rudderValue
   rudderbuttoncolor.value = color
 }
 
@@ -541,7 +546,7 @@ function addWayPoint() {
         id = usvStore.ships[shipid].waypoints[usvStore.ships[shipid].waypoints.length - 1].id + 1
       }
 
-      const point: MapMarker = {
+      const point: WayPoint = {
         id,
         anchor: { x: 0.5, y: 1 },
         iconPath: '/static/images/reddotmark.png',
@@ -553,7 +558,7 @@ function addWayPoint() {
         updated: false,
       }
 
-      usvStore.addWayPoint(shipid, point as any)
+      usvStore.addWayPoint(shipid, point)
       updatewaypoints()
       stm32AddWayPoint(shipid, id, res.longitude, res.latitude)
     },
@@ -620,9 +625,11 @@ function onMapTap() {
   usvStore.ships[shipid].ship.width = 45
   usvStore.ships[shipid].ship.height = 45
 
+  // 原始代码中 sel 总是为 true，所以总是更新显示
+  sel = true
   if (sel) {
-    CurRudder.value = usvStore.ships[shipid].rudder
-    UserSetPower.value = usvStore.ships[shipid].power
+    CurRudder.value = Number(usvStore.ships[shipid].rudder)
+    UserSetPower.value = Number(usvStore.ships[shipid].power)
     updatewaypoints()
   }
 
@@ -669,8 +676,8 @@ function onMarkerTap(e: any) {
   usvStore.ships[shipid].ship.width = 45
   usvStore.ships[shipid].ship.height = 45
 
-  CurRudder.value = usvStore.ships[shipid].rudder
-  UserSetPower.value = usvStore.ships[shipid].power
+  CurRudder.value = Number(usvStore.ships[shipid].rudder)
+  UserSetPower.value = Number(usvStore.ships[shipid].power)
   EnableAuto.value = !getEnableManual(shipid)
   updatewaypoints()
 }
@@ -696,14 +703,17 @@ function onRegionChange(event: any) {
           }
         })
 
-        usvStore.updateCrossMarker(latitude, longitude)
+        // 更新十字标记位置
+        usvStore.crossmarker[0].latitude = latitude
+        usvStore.crossmarker[0].longitude = longitude
         mapCtx.getScale({
           success: (scaleRes) => {
-            usvStore.updateCrossMarker(latitude, longitude, scaleRes.scale)
+            usvStore.crossmarker[0].mapscale = scaleRes.scale
             mapscale.value = scaleRes.scale
+            usvStore.saveCrossMarkerToStorage()
+            updatewaypoints()
           },
         })
-        updatewaypoints()
       },
     })
   }
@@ -734,13 +744,14 @@ function onAccelerometerChange(res: any) {
   result = Number((-(result * 3)).toFixed(0))
 
   const ship = usvStore.ships[shipid]
-  if (result === 0 || ship.rudder - result > 2 || ship.rudder - result < -2) {
+  const currentRudder = Number(ship.rudder)
+  if (result === 0 || currentRudder - result > 2 || currentRudder - result < -2) {
     ship.rudder = result
     CurRudder.value = result
   }
 }
 
-onLoad((options) => {
+onLoad((options: Record<string, string>) => {
   connectedDeviceId.value = options.connectedDeviceId || ''
   connectedDevicename.value = decodeURIComponent(options.connectedDevicename || '0')
   userAccelerometer.value = usvStore.userAccelerometer
@@ -887,7 +898,7 @@ onUnmounted(() => {
             active-color="#f8f8f8"
             inactive-color="#f8f8f8"
             block-color="#ffffff"
-            block-size="20"
+            :block-size="20"
             @change="onPowerDrag"
           />
         </view>
@@ -908,7 +919,7 @@ onUnmounted(() => {
             active-color="#f8f8f8"
             inactive-color="#f8f8f8"
             block-color="#ffffff"
-            block-size="20"
+            :block-size="20"
             @change="onRudderDrag"
           />
         </view>
