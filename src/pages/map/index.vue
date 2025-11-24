@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Polyline, WayPoint } from '@/types/usv'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onReady } from '@dcloudio/uni-app'
 import { onMounted, onUnmounted, ref } from 'vue'
 import { useUsvStore } from '@/store/usv'
 import { compute } from '@/utils/crcCalc'
@@ -153,13 +153,33 @@ function writeBLECharacteristicValue() {
  * 重连蓝牙
  */
 function reconnectBLE() {
+  if (!connectedDeviceId.value || connectedDeviceId.value === '0') {
+    return
+  }
+
+  console.log('尝试重连蓝牙:', connectedDeviceId.value)
   uni.createBLEConnection({
-    deviceId: deviceId.value,
+    deviceId: connectedDeviceId.value,
     success: () => {
-      getBLEDeviceServices(connectedDeviceId.value)
+      console.log('重连成功，重新获取服务')
+      setTimeout(() => {
+        getBLEDeviceServices(connectedDeviceId.value)
+      }, 500)
     },
     fail: (res) => {
-      console.log('重连失败:', res)
+      console.error('重连失败:', res)
+      let errorMsg = '重连失败'
+      if (res.errCode === 10003) {
+        errorMsg = '设备连接失败'
+      }
+      else if (res.errCode === 10004) {
+        errorMsg = '设备未找到'
+      }
+      uni.showToast({
+        title: errorMsg,
+        icon: 'none',
+        duration: 2000,
+      })
     },
   })
 }
@@ -176,15 +196,41 @@ function getBLEDeviceServices(deviceIdParam: string) {
     deviceId: deviceIdParam,
     fail: (res) => {
       console.error('获取服务失败:', res)
+      let errorMsg = '获取服务失败'
+      if (res.errCode === 10001) {
+        errorMsg = '蓝牙适配器未初始化'
+      }
+      else if (res.errCode === 10003) {
+        errorMsg = '设备连接失败，请重试'
+        // 尝试重连
+        setTimeout(() => {
+          reconnectBLE()
+        }, 1000)
+      }
+      uni.showToast({
+        title: errorMsg,
+        icon: 'none',
+        duration: 2000,
+      })
     },
     success: (res) => {
-      console.log('获取服务成功')
+      console.log('获取服务成功', res.services)
+      let found = false
       for (let i = 0; i < res.services.length; i++) {
         const uuid = res.services[i].uuid
         if (usvStore.bleserviceuuid.includes(uuid)) {
+          found = true
           getBLEDeviceCharacteristics(deviceIdParam, uuid)
           return
         }
+      }
+      if (!found) {
+        console.error('未找到匹配的服务 UUID')
+        uni.showToast({
+          title: '未找到匹配的服务',
+          icon: 'none',
+          duration: 2000,
+        })
       }
     },
   })
@@ -203,6 +249,8 @@ function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: stri
       deviceId.value = deviceIdParam
       serviceId.value = serviceIdParam
 
+      let foundTxCharacteristic = false
+
       for (let i = 0; i < res.characteristics.length; i++) {
         const item = res.characteristics[i]
         if (item.properties.read) {
@@ -210,9 +258,13 @@ function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: stri
             deviceId: deviceIdParam,
             serviceId: serviceIdParam,
             characteristicId: item.uuid,
+            fail: (err) => {
+              console.warn('读取特征值失败:', err)
+            },
           })
         }
         if (usvStore.bletxuuid.includes(item.uuid)) {
+          foundTxCharacteristic = true
           characteristicId.value = item.uuid
           writeBLECharacteristicValue()
         }
@@ -222,8 +274,20 @@ function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: stri
             serviceId: serviceIdParam,
             characteristicId: item.uuid,
             state: true,
+            fail: (err) => {
+              console.warn('启用通知失败:', err)
+            },
           })
         }
+      }
+
+      if (!foundTxCharacteristic) {
+        console.error('未找到匹配的发送特征 UUID')
+        uni.showToast({
+          title: '未找到匹配的特征',
+          icon: 'none',
+          duration: 2000,
+        })
       }
 
       // 初始化航点
@@ -238,6 +302,21 @@ function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: stri
     },
     fail: (res) => {
       console.error('获取特征值失败:', res)
+      let errorMsg = '获取特征值失败'
+      if (res.errCode === 10001) {
+        errorMsg = '蓝牙适配器未初始化'
+      }
+      else if (res.errCode === 10003) {
+        errorMsg = '设备连接失败，请重试'
+        setTimeout(() => {
+          reconnectBLE()
+        }, 1000)
+      }
+      uni.showToast({
+        title: errorMsg,
+        icon: 'none',
+        duration: 2000,
+      })
     },
   })
 
@@ -768,12 +847,37 @@ onLoad((options: Record<string, string>) => {
 
   // 监听加速度计
   uni.onAccelerometerChange(onAccelerometerChange)
+})
 
-  // 初始化蓝牙连接
+/**
+ * 页面渲染完成
+ */
+onReady(() => {
+  // 初始化蓝牙连接（在页面渲染完成后进行，确保连接稳定）
   if (connectedDeviceId.value && connectedDeviceId.value !== '0') {
+    console.log('开始获取蓝牙服务:', connectedDeviceId.value)
     getBLEDeviceServices(connectedDeviceId.value)
     startInter()
   }
+
+  // 监听蓝牙连接断开
+  uni.onBLEConnectionStateChange((res) => {
+    console.log('蓝牙连接状态变化:', res)
+    if (!res.connected) {
+      console.warn('蓝牙连接已断开')
+      uni.showToast({
+        title: '蓝牙连接已断开',
+        icon: 'none',
+        duration: 2000,
+      })
+      // 尝试重连
+      if (connectedDeviceId.value && connectedDeviceId.value !== '0') {
+        setTimeout(() => {
+          reconnectBLE()
+        }, 1000)
+      }
+    }
+  })
 })
 
 onMounted(() => {

@@ -114,12 +114,26 @@ function createBLEConnection(device: BluetoothDevice) {
   const deviceId = device.deviceId
   const name = device.name || device.localName || '未知设备'
 
+  // 先停止扫描
+  uni.stopBluetoothDevicesDiscovery({
+    success: () => {
+      console.log('已停止扫描蓝牙设备')
+    },
+    fail: (err) => {
+      console.warn('停止扫描失败:', err)
+    },
+    complete: () => {
+      // 无论成功失败都继续连接
+    },
+  })
+
   uni.createBLEConnection({
     deviceId,
     success: () => {
       console.log('蓝牙连接成功')
       connected.value = true
       connecting.value = false
+      discoveryStarted.value = false
       uni.navigateTo({
         url: `/pages/map/index?connectedDeviceId=${deviceId}&connectedDevicename=${encodeURIComponent(name)}`,
       })
@@ -127,10 +141,24 @@ function createBLEConnection(device: BluetoothDevice) {
     fail: (err) => {
       console.error('蓝牙连接失败:', err)
       connecting.value = false
+      let errorMsg = '连接失败'
+      if (err.errCode === 10003) {
+        errorMsg = '设备连接失败，请重试'
+      }
+      else if (err.errCode === 10004) {
+        errorMsg = '设备未找到'
+      }
+      else if (err.errCode === 10005) {
+        errorMsg = '连接超时'
+      }
       uni.showToast({
-        title: '连接失败',
+        title: errorMsg,
         icon: 'none',
+        duration: 2000,
       })
+      // 重新开始扫描
+      discoveryStarted.value = false
+      startBluetoothDevicesDiscovery()
     },
   })
 }
