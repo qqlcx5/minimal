@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MapMarker, Polyline } from '@/types/usv'
 import { onLoad } from '@dcloudio/uni-app'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useUsvStore } from '@/store/usv'
 import { compute } from '@/utils/crcCalc'
 import { clearInstructions, endUpdateWayPoint, getEnableManual, getTxBuf, removeInstruction, setCalibINS, setEnableManual, setForceSetZPoint, startUpdateWayPoint, addWayPoint as stm32AddWayPoint, deleteAllWayPoint as stm32DeleteAllWayPoint, deleteWayPoint as stm32DeleteWayPoint, modifyWayPoint as stm32ModifyWayPoint, updateWayPoint as stm32UpdateWayPoint } from '@/utils/stm32Com'
@@ -29,7 +29,7 @@ const characteristicId = ref('')
 let shipid = 0
 
 // 定时器和状态
-let interval: ReturnType<typeof setInterval> | null = null
+let interval: number | null = null
 let rxTimeOut = 0
 let timeout = 0
 let rudderdragtime = 0
@@ -81,48 +81,20 @@ function updatewaypoints() {
   const ships = usvStore.ships
   const currentShip = ships[shipid]
 
-  // 确保所有 marker 都有必需的属性
   markers.value = [
-    ...crossmarker.filter(m => m.iconPath),
-    ...ships.map(s => s.ship).filter(m => m.iconPath),
+    ...crossmarker,
+    ...ships.map(s => s.ship),
     currentShip.plos,
-    ...currentShip.waypoints.filter(m => m.iconPath),
-  ] as any
+    ...currentShip.waypoints,
+  ]
 
-  // 更新航点路径，确保至少有一个点
-  const waypointPoints = currentShip.waypoints.map(wp => ({
+  polyline.value[0].points = currentShip.waypoints.map(wp => ({
     latitude: wp.latitude,
     longitude: wp.longitude,
   }))
-  polyline.value[0].points = waypointPoints.length > 0 ? waypointPoints : []
 
-  // 更新船舶轨迹路径，确保至少有一个点
-  const shipPoints = currentShip.points || []
-  polyline.value[1].points = shipPoints.length > 0 ? shipPoints : []
+  polyline.value[1].points = currentShip.points
 }
-
-/**
- * 验证并过滤有效的 polyline
- */
-const validPolyline = computed(() => {
-  return polyline.value.filter((line) => {
-    // 确保 points 存在且是数组，且至少有一个有效的点
-    if (!line.points || !Array.isArray(line.points) || line.points.length === 0) {
-      return false
-    }
-    // 验证每个点的坐标是否有效
-    return line.points.every((point) => {
-      return (
-        typeof point.latitude === 'number'
-        && typeof point.longitude === 'number'
-        && point.latitude >= -90
-        && point.latitude <= 90
-        && point.longitude >= -180
-        && point.longitude <= 180
-      )
-    })
-  })
-})
 
 /**
  * 更新船舶位置
@@ -152,15 +124,13 @@ function startInter() {
  */
 function writeBLECharacteristicValue() {
   const ship = usvStore.ships[shipid]
-  // 使用 UserSetPower 而不是 ship.power，保持与原始代码一致
-  const arr = getTxBuf(shipid, UserSetPower.value, -Number(ship.rudder))
+  const arr = getTxBuf(shipid, ship.power, -ship.rudder)
 
-  const buffer = new Uint8Array(arr).buffer
   uni.writeBLECharacteristicValue({
     deviceId: deviceId.value,
     serviceId: serviceId.value,
     characteristicId: characteristicId.value,
-    value: buffer as any,
+    value: new Uint8Array(arr).buffer,
     fail: (res) => {
       timeout++
       if (timeout > 1) {
@@ -277,12 +247,11 @@ function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: stri
  */
 function onBLEDateReceiverd() {
   uni.onBLECharacteristicValueChange((characteristic) => {
-    const buffer = characteristic.value as unknown as ArrayBuffer
-    if (buffer.byteLength < 5) {
+    if (characteristic.value.byteLength < 5) {
       return
     }
 
-    const view = new DataView(buffer)
+    const view = new DataView(characteristic.value)
     const arr: number[] = []
     for (let i = 0; i < view.byteLength - 2; i++) {
       arr.push(view.getInt8(i))
@@ -433,7 +402,7 @@ function updateWayPointLocal(id: number, lng: number, lat: number) {
   })
 
   if (!ok) {
-    const point = {
+    const point: MapMarker = {
       id,
       anchor: { x: 0.5, y: 1 },
       iconPath: '/static/images/reddotmark.png',
@@ -443,7 +412,7 @@ function updateWayPointLocal(id: number, lng: number, lat: number) {
       longitude: lng,
       selected: false,
       updated: true,
-    } as any
+    }
 
     for (let i = 0; i < usvStore.ships[shipid].waypoints.length; i++) {
       if (!usvStore.ships[shipid].waypoints[i].updated) {
@@ -474,10 +443,10 @@ function endUpdateWayPointLocal() {
 /**
  * 功率滑块拖动
  */
-function onPowerDrag(event: { value: number }) {
+function onPowerDrag(event: any) {
   let result = 0
   let color = '#757575'
-  const value = 60 - Number(event.value)
+  const value = 60 - Number(event.detail.value)
 
   if (value < -10 || value > 10) {
     result = value
@@ -492,17 +461,16 @@ function onPowerDrag(event: { value: number }) {
     color = '#00b26a'
   }
 
-  const powerValue = Number((result * 2).toFixed(0))
-  usvStore.ships[shipid].power = powerValue
-  UserSetPower.value = powerValue
-  powerslidervalue.value = event.value
+  usvStore.ships[shipid].power = Number((result * 2).toFixed(0))
+  UserSetPower.value = usvStore.ships[shipid].power
+  powerslidervalue.value = event.detail.value
   powerbuttoncolor.value = color
 }
 
 /**
  * 舵角滑块拖动
  */
-function onRudderDrag(event: { value: number }) {
+function onRudderDrag(event: any) {
   rudderdragtime = 0
   if (userAccelerometer.value || !getEnableManual(shipid)) {
     return
@@ -510,7 +478,7 @@ function onRudderDrag(event: { value: number }) {
 
   let result = 0
   let color = '#757575'
-  const value = 60 - Number(event.value)
+  const value = 60 - Number(event.detail.value)
 
   if (value < -10 || value > 10) {
     result = value
@@ -525,10 +493,9 @@ function onRudderDrag(event: { value: number }) {
     color = '#ff7043'
   }
 
-  const rudderValue = Number((-result * 2).toFixed(0))
-  usvStore.ships[shipid].rudder = rudderValue
-  rudderslidervalue.value = event.value
-  CurRudder.value = rudderValue
+  usvStore.ships[shipid].rudder = Number((-result * 2).toFixed(0))
+  rudderslidervalue.value = event.detail.value
+  CurRudder.value = usvStore.ships[shipid].rudder
   rudderbuttoncolor.value = color
 }
 
@@ -536,17 +503,16 @@ function onRudderDrag(event: { value: number }) {
  * 自动模式切换
  */
 function autoChange(e: any) {
-  const isAuto = e.value
-  setEnableManual(shipid, !isAuto)
-  EnableAuto.value = isAuto
+  setEnableManual(shipid, !e.detail.value)
+  EnableAuto.value = !getEnableManual(shipid)
 }
 
 /**
  * 加速度计开关
  */
 function userAccelerometerChange(e: any) {
-  usvStore.setUserAccelerometer(e.value)
-  userAccelerometer.value = e.value
+  usvStore.setUserAccelerometer(e.detail.value)
+  userAccelerometer.value = e.detail.value
 }
 
 /**
@@ -575,7 +541,7 @@ function addWayPoint() {
         id = usvStore.ships[shipid].waypoints[usvStore.ships[shipid].waypoints.length - 1].id + 1
       }
 
-      const point = {
+      const point: MapMarker = {
         id,
         anchor: { x: 0.5, y: 1 },
         iconPath: '/static/images/reddotmark.png',
@@ -585,9 +551,9 @@ function addWayPoint() {
         longitude: res.longitude,
         selected: false,
         updated: false,
-      } as any
+      }
 
-      usvStore.addWayPoint(shipid, point)
+      usvStore.addWayPoint(shipid, point as any)
       updatewaypoints()
       stm32AddWayPoint(shipid, id, res.longitude, res.latitude)
     },
@@ -612,10 +578,17 @@ function deleteWayPoint() {
  * 删除所有航点
  */
 function deleteAllWayPoint() {
-  // 原始代码没有确认对话框，直接删除
-  stm32DeleteAllWayPoint(shipid)
-  usvStore.deleteAllWayPoints(shipid)
-  updatewaypoints()
+  uni.showModal({
+    title: '确认删除',
+    content: '确定要删除所有航点吗？',
+    success: (res) => {
+      if (res.confirm) {
+        stm32DeleteAllWayPoint(shipid)
+        usvStore.deleteAllWayPoints(shipid)
+        updatewaypoints()
+      }
+    },
+  })
 }
 
 /**
@@ -647,10 +620,11 @@ function onMapTap() {
   usvStore.ships[shipid].ship.width = 45
   usvStore.ships[shipid].ship.height = 45
 
-  // 原始代码中 sel 总是为 true，这里保持相同逻辑
-  CurRudder.value = Number(usvStore.ships[shipid].rudder)
-  UserSetPower.value = Number(usvStore.ships[shipid].power)
-  updatewaypoints()
+  if (sel) {
+    CurRudder.value = usvStore.ships[shipid].rudder
+    UserSetPower.value = usvStore.ships[shipid].power
+    updatewaypoints()
+  }
 
   EnableAuto.value = !getEnableManual(shipid)
 }
@@ -695,8 +669,8 @@ function onMarkerTap(e: any) {
   usvStore.ships[shipid].ship.width = 45
   usvStore.ships[shipid].ship.height = 45
 
-  CurRudder.value = Number(usvStore.ships[shipid].rudder)
-  UserSetPower.value = Number(usvStore.ships[shipid].power)
+  CurRudder.value = usvStore.ships[shipid].rudder
+  UserSetPower.value = usvStore.ships[shipid].power
   EnableAuto.value = !getEnableManual(shipid)
   updatewaypoints()
 }
@@ -760,19 +734,17 @@ function onAccelerometerChange(res: any) {
   result = Number((-(result * 3)).toFixed(0))
 
   const ship = usvStore.ships[shipid]
-  const currentRudder = Number(ship.rudder)
-  if (result === 0 || currentRudder - result > 2 || currentRudder - result < -2) {
+  if (result === 0 || ship.rudder - result > 2 || ship.rudder - result < -2) {
     ship.rudder = result
     CurRudder.value = result
   }
 }
 
-onLoad((options: Record<string, string>) => {
+onLoad((options) => {
   connectedDeviceId.value = options.connectedDeviceId || ''
   connectedDevicename.value = decodeURIComponent(options.connectedDevicename || '0')
   userAccelerometer.value = usvStore.userAccelerometer
   mapscale.value = usvStore.crossmarker[0].mapscale
-  EnableAuto.value = !getEnableManual(shipid)
 
   updatewaypoints()
 
@@ -815,36 +787,36 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <view class="pl-safe pr-safe h-screen w-full flex flex-col bg-gray-100">
+  <view class="container-row">
     <view
       v-if="userAccelerometer"
-      class="flex-none"
+      class="fixed-height"
     >
-      <text class="inline-block w-[150px] p-[8px] text-[14px] text-gray-800">当前舵角: {{ CurRudder }}</text>
+      <text class="page-body-title">当前舵角: {{ CurRudder }}</text>
     </view>
-    <view class="relative flex-1">
-      <view class="absolute inset-0 flex flex-row bg-transparent">
-        <view class="relative flex-1">
+    <view class="auto-full-height">
+      <view class="container-column">
+        <view class="auto-full-width">
           <map
             id="mapId"
-            class="absolute inset-0 h-full w-full"
+            class="map"
             :latitude="usvStore.crossmarker[0].latitude"
             :longitude="usvStore.crossmarker[0].longitude"
             :scale="mapscale"
-            :markers="markers as any"
-            :polyline="validPolyline"
+            :markers="markers"
+            :polyline="polyline"
             @regionchange="onRegionChange"
             @markertap="onMarkerTap"
             @tap="onMapTap"
           >
-            <view class="absolute ml-[50px] flex flex-row rounded-[8px] bg-white/90 p-[8px] shadow">
-              <view class="min-w-[98px] flex flex-col gap-[8px]">
-                <wd-switch
+            <view class="map-button">
+              <view class="map-button1">
+                <switch
                   :model-value="EnableAuto"
                   @change="autoChange"
                 >
                   自动
-                </wd-switch>
+                </switch>
                 <wd-button
                   type="primary"
                   size="small"
@@ -869,7 +841,7 @@ onUnmounted(() => {
               </view>
               <view
                 v-if="ShowSettings"
-                class="ml-[16px] min-w-[150px] flex flex-col gap-[8px]"
+                class="map-settings"
               >
                 <wd-button
                   type="error"
@@ -892,106 +864,276 @@ onUnmounted(() => {
                 >
                   标定磁力计
                 </wd-button>
-                <wd-switch
+                <switch
                   :model-value="userAccelerometer"
                   @change="userAccelerometerChange"
                 >
                   加速度计
-                </wd-switch>
+                </switch>
               </view>
             </view>
           </map>
         </view>
       </view>
     </view>
-    <view class="flex-none border-t border-gray-200 bg-white">
-      <view class="flex items-center justify-center">
-        <view class="flex flex-1 flex-col items-center gap-[8px]">
-          <view class="h-[20px] w-full">
-            <wd-slider
-              v-model="powerslidervalue"
-              :max="120"
-              :min="0"
-              :step="1"
-              active-color="#4a90e2"
-              inactive-color="#e0e0e0"
-              hide-label
-              hide-min-max
-              @dragmove="onPowerDrag"
-            />
-          </view>
-          <view
-            class="h-[20px] w-[50px] flex items-center justify-center rounded-[8px] text-[16px] text-white font-bold shadow"
-            :style="{ backgroundColor: powerbuttoncolor }"
-          >
-            {{ UserSetPower }}
-          </view>
+    <view class="fixed-height slider-container">
+      <view class="slider-item">
+        <view class="slider-wrapper">
+          <slider
+            :value="powerslidervalue"
+            :max="120"
+            :min="0"
+            :step="1"
+            active-color="#f8f8f8"
+            inactive-color="#f8f8f8"
+            block-color="#ffffff"
+            block-size="20"
+            @change="onPowerDrag"
+          />
         </view>
-        <view class="flex flex-1 flex-col items-center gap-[8px]">
-          <view class="h-[20px] w-full">
-            <wd-slider
-              v-model="rudderslidervalue"
-              :max="120"
-              :min="0"
-              :step="1"
-              active-color="#4a90e2"
-              inactive-color="#e0e0e0"
-              hide-label
-              hide-min-max
-              @dragmove="onRudderDrag"
-            />
-          </view>
-          <view
-            class="h-[20px] w-[50px] flex items-center justify-center rounded-[8px] text-[16px] text-white font-bold shadow"
-            :style="{ backgroundColor: rudderbuttoncolor }"
-          >
-            {{ CurRudder }}
-          </view>
+        <view
+          class="slider-button"
+          :style="{ backgroundColor: powerbuttoncolor }"
+        >
+          {{ UserSetPower }}
+        </view>
+      </view>
+      <view class="slider-item">
+        <view class="slider-wrapper">
+          <slider
+            :value="rudderslidervalue"
+            :max="120"
+            :min="0"
+            :step="1"
+            active-color="#f8f8f8"
+            inactive-color="#f8f8f8"
+            block-color="#ffffff"
+            block-size="20"
+            @change="onRudderDrag"
+          />
+        </view>
+        <view
+          class="slider-button"
+          :style="{ backgroundColor: rudderbuttoncolor }"
+        >
+          {{ CurRudder }}
         </view>
       </view>
     </view>
-    <view class="flex flex-none items-center justify-between border-t border-gray-200 bg-white p-[8px] px-[16px]">
-      <view class="flex gap-[16px]">
-        <view class="flex items-center gap-[4px]">
-          <text class="text-[12px] text-gray-600">功率:</text>
-          <text class="text-[14px] text-gray-800 font-bold">{{ CMD25_Data2Power }}W</text>
+    <view class="fixed-height status-bar">
+      <view class="status-info">
+        <view class="status-item">
+          <text class="label">功率:</text>
+          <text class="value">{{ CMD25_Data2Power }}W</text>
         </view>
-        <view class="flex items-center gap-[4px]">
-          <text class="text-[12px] text-gray-600">电压:</text>
-          <text class="text-[14px] text-gray-800 font-bold">{{ CMD23_Data2BatteryVoltage }}V</text>
+        <view class="status-item">
+          <text class="label">电压:</text>
+          <text class="value">{{ CMD23_Data2BatteryVoltage }}V</text>
         </view>
-        <view class="flex items-center gap-[4px]">
-          <text class="text-[12px] text-gray-600">速度:</text>
-          <text class="text-[14px] text-gray-800 font-bold">{{ SpeedKnot }}</text>
+        <view class="status-item">
+          <text class="label">速度:</text>
+          <text class="value">{{ SpeedKnot }}</text>
         </view>
-        <view class="flex items-center gap-[4px]">
-          <text class="text-[12px] text-gray-600">运行时间:</text>
-          <text class="text-[14px] text-gray-800 font-bold">{{ CMD27_Data6SingleMin }}</text>
+        <view class="status-item">
+          <text class="label">运行时间:</text>
+          <text class="value">{{ CMD27_Data6SingleMin }}</text>
         </view>
       </view>
-      <view class="flex items-center gap-[8px]">
+      <view class="status-indicators">
         <view
-          class="rounded-[4px] p-[4px] px-[8px] text-[12px] text-white"
-          :class="LocalOK ? 'bg-green-400' : 'bg-orange-500'"
+          class="indicator"
+          :class="{ 'indicator-ok': LocalOK, 'indicator-error': !LocalOK }"
         >
           主控
         </view>
         <view
-          class="rounded-[4px] p-[4px] px-[8px] text-[12px] text-white"
-          :class="USVOnline ? 'bg-green-400' : 'bg-orange-500'"
+          class="indicator"
+          :class="{ 'indicator-ok': USVOnline, 'indicator-error': !USVOnline }"
         >
           基站
         </view>
         <view
-          class="rounded-[4px] p-[4px] px-[8px] text-[12px] text-white"
-          :class="RemoteOK ? 'bg-green-400' : 'bg-orange-500'"
+          class="indicator"
+          :class="{ 'indicator-ok': RemoteOK, 'indicator-error': !RemoteOK }"
         >
           遥控
         </view>
-        <view class="ml-[8px] text-[14px] text-gray-800 font-bold">
+        <view class="rx-count">
           {{ RxCount }}
         </view>
       </view>
     </view>
   </view>
 </template>
+
+<style lang="scss" scoped>
+.container-row {
+  width: 100%;
+  height: 100vh;
+  background-color: #f8f8f8;
+  display: flex;
+  flex-direction: column;
+}
+
+.fixed-height {
+  flex: 0 0 auto;
+}
+
+.auto-full-height {
+  flex: 1 1 auto;
+  position: relative;
+}
+
+.container-column {
+  background-color: transparent;
+  position: absolute;
+  display: flex;
+  flex-direction: row;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.auto-full-width {
+  flex: 1 1 auto;
+  position: relative;
+}
+
+.map {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.page-body-title {
+  display: inline-block;
+  width: 150px;
+  padding: 8px;
+  font-size: 14px;
+  color: #333;
+}
+
+.map-button {
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: row;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  margin: 10px;
+}
+
+.map-button1 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 98px;
+}
+
+.map-settings {
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.slider-container {
+  display: flex;
+  flex-direction: row;
+  background-color: #ffffff;
+  border-top: 1px solid #e0e0e0;
+  padding: 0 16px;
+  gap: 16px;
+}
+
+.slider-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  // gap: 8px;
+}
+
+.slider-wrapper {
+  width: 100%;
+  padding: 0 8px;
+}
+
+.slider-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  width: 60px;
+  height: 20px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background-color: #ffffff;
+  border-top: 1px solid #e0e0e0;
+}
+
+.status-info {
+  display: flex;
+  gap: 16px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.label {
+  font-size: 12px;
+  color: #666;
+}
+
+.value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+}
+
+.status-indicators {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.indicator {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #ffffff;
+}
+
+.indicator-ok {
+  background-color: #38ff92;
+}
+
+.indicator-error {
+  background-color: #ff7043;
+}
+
+.rx-count {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  margin-left: 8px;
+}
+</style>
