@@ -5,7 +5,6 @@ export type AuthMode = 'single' | 'double'
 export interface ISingleTokenRes {
   token: string
   expiresIn: number // 有效期(秒)
-  expires_time?: number // 有效期(秒)
 }
 
 // 双Token响应类型
@@ -14,7 +13,6 @@ export interface IDoubleTokenRes {
   refreshToken: string
   accessExpiresIn: number // 访问令牌有效期(秒)
   refreshExpiresIn: number // 刷新令牌有效期(秒)
-  expires_time?: number // 有效期(秒)
 }
 
 /**
@@ -30,17 +28,7 @@ export interface IUserInfoRes {
   username: string
   nickname: string
   avatar?: string
-  phone?: string // Add phone number to user info
   [key: string]: any // 允许其他扩展字段
-}
-
-/**
- * 绑定手机号
- */
-export interface IBindPhone {
-  encryptedData: string
-  iv: string
-  code?: string
 }
 
 // 认证存储数据结构

@@ -6,7 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-uni-app
+
 node_modules
 .DS_Store
 dist
@@ -28,12 +28,14 @@ docs/.vitepress/dist
 docs/.vitepress/cache
 
 src/types
+# 单独把这个文件排除掉，用以解决部分电脑生成的 auto-import.d.ts 的API不完整导致类型提示报错问题
+!src/types/auto-import.d.ts
 src/manifest.json
 src/pages.json
 
-# lock 文件还是不要了，我主要的版本写死就好了
-pnpm-lock.yaml
-package-lock.json
+# 2025-10-15 by 菲鸽： lock 文件还是需要加入版本管理，今天又遇到版本不一致导致无法运行的问题了。
+# pnpm-lock.yaml
+# package-lock.json
 
 # TIPS：如果某些文件已经加入了版本管理，现在重新加入 .gitignore 是不生效的，需要执行下面的操作
 # `git rm -r --cached .` 然后提交 commit 即可。

@@ -1,8 +1,7 @@
-import type { CustomTabBarItem, CustomTabBarItemBadge } from './config'
+import type { CustomTabBarItem, CustomTabBarItemBadge } from './types'
 import { reactive } from 'vue'
 
-import { FG_LOG_ENABLE } from '@/router/interceptor'
-import { tabbarList as _tabbarList, customTabbarEnable } from './config'
+import { tabbarList as _tabbarList, customTabbarEnable, selectedTabbarStrategy, TABBAR_STRATEGY_MAP } from './config'
 
 // TODO 1/2: 中间的鼓包tabbarItem的开关
 const BULGE_ENABLE = false
@@ -23,6 +22,9 @@ if (customTabbarEnable && BULGE_ENABLE) {
 }
 
 export function isPageTabbar(path: string) {
+  if (selectedTabbarStrategy === TABBAR_STRATEGY_MAP.NO_TABBAR) {
+    return false
+  }
   const _path = path.split('?')[0]
   return tabbarList.some(item => item.pagePath === _path)
 }
@@ -51,7 +53,6 @@ const tabbarStore = reactive({
       return
     }
     const index = tabbarList.findIndex(item => item.pagePath === path)
-    FG_LOG_ENABLE && console.log('index:', index, path)
     // console.log('tabbarList:', tabbarList)
     if (index === -1) {
       const pagesPathList = getCurrentPages().map(item => item.route.startsWith('/') ? item.route : `/${item.route}`)

@@ -10,7 +10,7 @@ const userInfoState: IUserInfoRes = {
   userId: -1,
   username: '',
   nickname: '',
-  avatar: 'https://images.unsplash.com/photo-1757373406236-f03e14c3e5c5?w=80&h=80&fit=crop&crop=face',
+  avatar: '/static/images/default-avatar.png',
 }
 
 export const useUserStore = defineStore(
