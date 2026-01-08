@@ -21,22 +21,23 @@
 
     <!-- 左侧：方向控制盘 -->
     <view class="direction-panel">
-      <view class="direction-wheel" @touchstart="onWheelTouchStart" @touchmove="onWheelTouchMove" @touchend="onWheelTouchEnd">
+      <view class="direction-wheel">
         <view class="wheel-outer">
-          <view class="wheel-btn wheel-up" :class="{ active: activeDirection === 'up' }" @tap="onDirectionTap('up')">
+          <!-- 上：舵角增加 -->
+          <view class="wheel-btn wheel-up" :class="{ active: activeDirection === 'up' }" @tap="onRudderIncrease" @longpress="onRudderIncreaseLong" @touchend="stopRudderInterval">
             <text class="arrow">▲</text>
           </view>
-          <view class="wheel-btn wheel-right" :class="{ active: activeDirection === 'right' }" @tap="onDirectionTap('right')">
+          <!-- 右：右转 -->
+          <view class="wheel-btn wheel-right" :class="{ active: activeDirection === 'right' }" @tap="onRudderRight" @longpress="onRudderRightLong" @touchend="stopRudderInterval">
             <text class="arrow">▶</text>
           </view>
-          <view class="wheel-btn wheel-down" :class="{ active: activeDirection === 'down' }" @tap="onDirectionTap('down')">
+          <!-- 下：舵角减少 -->
+          <view class="wheel-btn wheel-down" :class="{ active: activeDirection === 'down' }" @tap="onRudderDecrease" @longpress="onRudderDecreaseLong" @touchend="stopRudderInterval">
             <text class="arrow">▼</text>
           </view>
-          <view class="wheel-btn wheel-left" :class="{ active: activeDirection === 'left' }" @tap="onDirectionTap('left')">
+          <!-- 左：左转 -->
+          <view class="wheel-btn wheel-left" :class="{ active: activeDirection === 'left' }" @tap="onRudderLeft" @longpress="onRudderLeftLong" @touchend="stopRudderInterval">
             <text class="arrow">◀</text>
-          </view>
-          <view class="wheel-center">
-            <view class="center-dot" />
           </view>
         </view>
       </view>
@@ -45,7 +46,7 @@
       </view>
     </view>
 
-    <!-- 中间：罗盘 -->
+    <!-- 中间：罗盘显示船体方向 -->
     <view class="compass-panel">
       <view class="compass-ring">
         <text class="compass-dir compass-n">N</text>
@@ -57,6 +58,9 @@
         <view class="ship-icon" :style="{ transform: `rotate(${shipRotate}deg)` }">
           <image src="/static/images/ship0.png" class="ship-img" mode="aspectFit" />
         </view>
+      </view>
+      <view class="compass-degree">
+        <text>{{ shipRotate.toFixed(1) }}°</text>
       </view>
     </view>
 
@@ -178,6 +182,82 @@ const RxCount = ref(0)
 // 方向控制
 const activeDirection = ref('')
 
+// 舵角控制定时器
+let rudderInterval: ReturnType<typeof setInterval> | null = null
+
+// 舵角增加（上）
+function onRudderIncrease() {
+  activeDirection.value = 'up'
+  CurRudder.value = Math.min(100, CurRudder.value + 5)
+  usvStore.ships[shipid].rudder = CurRudder.value
+  setTimeout(() => { activeDirection.value = '' }, 150)
+}
+
+function onRudderIncreaseLong() {
+  activeDirection.value = 'up'
+  rudderInterval = setInterval(() => {
+    CurRudder.value = Math.min(100, CurRudder.value + 5)
+    usvStore.ships[shipid].rudder = CurRudder.value
+  }, 100)
+}
+
+// 舵角减少（下）
+function onRudderDecrease() {
+  activeDirection.value = 'down'
+  CurRudder.value = Math.max(-100, CurRudder.value - 5)
+  usvStore.ships[shipid].rudder = CurRudder.value
+  setTimeout(() => { activeDirection.value = '' }, 150)
+}
+
+function onRudderDecreaseLong() {
+  activeDirection.value = 'down'
+  rudderInterval = setInterval(() => {
+    CurRudder.value = Math.max(-100, CurRudder.value - 5)
+    usvStore.ships[shipid].rudder = CurRudder.value
+  }, 100)
+}
+
+// 右转
+function onRudderRight() {
+  activeDirection.value = 'right'
+  CurRudder.value = Math.min(100, CurRudder.value + 10)
+  usvStore.ships[shipid].rudder = CurRudder.value
+  setTimeout(() => { activeDirection.value = '' }, 150)
+}
+
+function onRudderRightLong() {
+  activeDirection.value = 'right'
+  rudderInterval = setInterval(() => {
+    CurRudder.value = Math.min(100, CurRudder.value + 10)
+    usvStore.ships[shipid].rudder = CurRudder.value
+  }, 100)
+}
+
+// 左转
+function onRudderLeft() {
+  activeDirection.value = 'left'
+  CurRudder.value = Math.max(-100, CurRudder.value - 10)
+  usvStore.ships[shipid].rudder = CurRudder.value
+  setTimeout(() => { activeDirection.value = '' }, 150)
+}
+
+function onRudderLeftLong() {
+  activeDirection.value = 'left'
+  rudderInterval = setInterval(() => {
+    CurRudder.value = Math.max(-100, CurRudder.value - 10)
+    usvStore.ships[shipid].rudder = CurRudder.value
+  }, 100)
+}
+
+// 停止舵角调整
+function stopRudderInterval() {
+  activeDirection.value = ''
+  if (rudderInterval) {
+    clearInterval(rudderInterval)
+    rudderInterval = null
+  }
+}
+
 // 船只朝向
 const shipRotate = computed(() => {
   return usvStore.ships[shipid]?.ship?.rotate || 0
@@ -189,45 +269,6 @@ const polyline = ref<Polyline[]>([
   { points: [], color: '#ff7043', width: 1 },
   { points: [], color: '#3875FF', width: 1 },
 ])
-
-// 方向控制
-function onDirectionTap(dir: string) {
-  activeDirection.value = dir
-  const step = 10
-  switch (dir) {
-    case 'left':
-      CurRudder.value = Math.max(-100, CurRudder.value - step)
-      break
-    case 'right':
-      CurRudder.value = Math.min(100, CurRudder.value + step)
-      break
-    case 'up':
-    case 'down':
-      // 上下可用于其他控制
-      break
-  }
-  usvStore.ships[shipid].rudder = CurRudder.value
-  setTimeout(() => { activeDirection.value = '' }, 150)
-}
-
-let wheelTouchStartX = 0
-function onWheelTouchStart(e: any) {
-  wheelTouchStartX = e.touches[0].clientX
-}
-
-function onWheelTouchMove(e: any) {
-  const deltaX = e.touches[0].clientX - wheelTouchStartX
-  const sensitivity = 0.5
-  let newRudder = CurRudder.value + deltaX * sensitivity
-  newRudder = Math.max(-100, Math.min(100, newRudder))
-  CurRudder.value = Math.round(newRudder)
-  usvStore.ships[shipid].rudder = CurRudder.value
-  wheelTouchStartX = e.touches[0].clientX
-}
-
-function onWheelTouchEnd() {
-  activeDirection.value = ''
-}
 
 // 速度控制
 function onSpeedUp() {
@@ -722,8 +763,8 @@ onUnmounted(() => {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(58, 122, 191, 0.9);
   border: 2px solid #4a9eff;
@@ -732,12 +773,10 @@ onUnmounted(() => {
   justify-content: center;
 }
 
-.center-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #4a9eff;
-  box-shadow: 0 0 8px #4a9eff;
+.center-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
 }
 
 .direction-label {
@@ -812,6 +851,20 @@ onUnmounted(() => {
 .ship-img {
   width: 100%;
   height: 100%;
+}
+
+.compass-degree {
+  position: absolute;
+  bottom: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 3px 12px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 /* 右侧速度控制 */
