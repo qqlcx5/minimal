@@ -1,7 +1,155 @@
+<template>
+  <view class="page-container">
+    <!-- 顶部标题栏 -->
+    <view class="header-bar">
+      <text class="header-title">云台控制</text>
+    </view>
+
+    <!-- 主控制区域 -->
+    <view class="control-area">
+      <!-- 左侧：方向控制盘 -->
+      <view class="direction-panel">
+        <view class="direction-wheel" @touchstart="onWheelTouchStart" @touchmove="onWheelTouchMove" @touchend="onWheelTouchEnd">
+          <!-- 外圈 -->
+          <view class="wheel-outer">
+            <!-- 上 -->
+            <view class="wheel-btn wheel-up" :class="{ active: activeDirection === 'up' }" @tap="onDirectionTap('up')">
+              <text class="arrow">▲</text>
+            </view>
+            <!-- 右 -->
+            <view class="wheel-btn wheel-right" :class="{ active: activeDirection === 'right' }" @tap="onDirectionTap('right')">
+              <text class="arrow">▶</text>
+            </view>
+            <!-- 下 -->
+            <view class="wheel-btn wheel-down" :class="{ active: activeDirection === 'down' }" @tap="onDirectionTap('down')">
+              <text class="arrow">▼</text>
+            </view>
+            <!-- 左 -->
+            <view class="wheel-btn wheel-left" :class="{ active: activeDirection === 'left' }" @tap="onDirectionTap('left')">
+              <text class="arrow">◀</text>
+            </view>
+            <!-- 中心 -->
+            <view class="wheel-center">
+              <view class="center-dot" />
+            </view>
+          </view>
+        </view>
+        <view class="direction-label">
+          <text>舵角: {{ CurRudder }}°</text>
+        </view>
+      </view>
+
+      <!-- 中间：罗盘和地图 -->
+      <view class="compass-panel">
+        <view class="compass-container">
+          <!-- 罗盘外框 -->
+          <view class="compass-ring">
+            <text class="compass-dir compass-n">N</text>
+            <text class="compass-dir compass-e">E</text>
+            <text class="compass-dir compass-s">S</text>
+            <text class="compass-dir compass-w">W</text>
+            <!-- 十字线 -->
+            <view class="compass-cross-h" />
+            <view class="compass-cross-v" />
+            <!-- 船只图标 -->
+            <view class="ship-icon" :style="{ transform: `rotate(${shipRotate}deg)` }">
+              <image src="/static/images/ship0.png" class="ship-img" mode="aspectFit" />
+            </view>
+          </view>
+        </view>
+        <!-- 地图切换按钮 -->
+        <view class="map-toggle" @tap="toggleMapView">
+          <text>{{ showMap ? '罗盘' : '地图' }}</text>
+        </view>
+      </view>
+
+      <!-- 右侧：加减速控制 -->
+      <view class="speed-panel">
+        <view class="speed-btn speed-up" @tap="onSpeedUp" @longpress="onSpeedUpLong">
+          <text class="speed-label">加速</text>
+          <text class="speed-icon">＋</text>
+        </view>
+        <view class="speed-display">
+          <text class="speed-value">{{ UserSetPower }}</text>
+          <text class="speed-unit">%</text>
+        </view>
+        <view class="speed-btn speed-down" @tap="onSpeedDown" @longpress="onSpeedDownLong">
+          <text class="speed-label">减速</text>
+          <text class="speed-icon">－</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 底部状态栏 -->
+    <view class="status-bar">
+      <view class="status-left">
+        <view class="status-item">
+          <text class="status-label">功率:</text>
+          <text class="status-value">{{ CMD25_Data2Power }}W</text>
+        </view>
+        <view class="status-item">
+          <text class="status-label">电压:</text>
+          <text class="status-value">{{ CMD23_Data2BatteryVoltage }}V</text>
+        </view>
+        <view class="status-item">
+          <text class="status-label">速度:</text>
+          <text class="status-value">{{ SpeedKnot }}节</text>
+        </view>
+      </view>
+      <view class="status-right">
+        <view class="indicator" :class="LocalOK ? 'ok' : 'error'">主控</view>
+        <view class="indicator" :class="USVOnline ? 'ok' : 'error'">基站</view>
+        <view class="indicator" :class="RemoteOK ? 'ok' : 'error'">遥控</view>
+        <view class="settings-btn" @tap="showsettings">
+          <text>⚙</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 设置弹窗 -->
+    <view v-if="ShowSettings" class="settings-modal" @tap="showsettings">
+      <view class="settings-content" @tap.stop>
+        <view class="settings-title">设置</view>
+        <view class="settings-row">
+          <text>自动模式</text>
+          <switch :checked="EnableAuto" @change="autoChange" />
+        </view>
+        <view class="settings-row">
+          <text>加速度计控制</text>
+          <switch :checked="userAccelerometer" @change="userAccelerometerChange" />
+        </view>
+        <view class="settings-btns">
+          <button class="btn-primary" @tap="addWayPoint">添加航点</button>
+          <button class="btn-warning" @tap="deleteWayPoint">删除航点</button>
+          <button class="btn-danger" @tap="deleteAllWayPoint">清空航点</button>
+          <button class="btn-info" @tap="forceSetZPoint">设置零点</button>
+          <button class="btn-info" @tap="calibINS">标定磁力计</button>
+        </view>
+        <button class="btn-close" @tap="showsettings">关闭</button>
+      </view>
+    </view>
+
+    <!-- 隐藏的地图（用于航点管理） -->
+    <map
+      v-show="showMap"
+      id="mapId"
+      class="hidden-map"
+      :latitude="usvStore.crossmarker[0].latitude"
+      :longitude="usvStore.crossmarker[0].longitude"
+      :scale="mapscale"
+      :markers="markers"
+      :polyline="polyline"
+      @regionchange="onRegionChange"
+      @markertap="onMarkerTap"
+      @tap="onMapTap"
+    />
+  </view>
+</template>
+
 <script setup lang="ts">
 import type { Polyline, WayPoint } from '@/types/usv'
 import { onLoad, onReady } from '@dcloudio/uni-app'
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useUsvStore } from '@/store/usv'
 import { compute } from '@/utils/crcCalc'
 import { clearInstructions, endUpdateWayPoint, getEnableManual, getTxBuf, removeInstruction, setCalibINS, setEnableManual, setForceSetZPoint, startUpdateWayPoint, addWayPoint as stm32AddWayPoint, deleteAllWayPoint as stm32DeleteAllWayPoint, deleteWayPoint as stm32DeleteWayPoint, modifyWayPoint as stm32ModifyWayPoint, updateWayPoint as stm32UpdateWayPoint } from '@/utils/stm32Com'
@@ -10,6 +158,7 @@ import { getRealDistance, wgs84ToGcj02 } from '@/utils/wsCoordinate'
 definePage({
   style: {
     navigationBarTitleText: 'USV 控制',
+    navigationStyle: 'custom',
     pageOrientation: 'landscape',
   },
 })
@@ -39,6 +188,7 @@ const EnableAuto = ref(false)
 const mapscale = ref(10)
 const userAccelerometer = ref(true)
 const ShowSettings = ref(false)
+const showMap = ref(false)
 
 // 控制状态
 const CMD25_Data2Power = ref(0)
@@ -47,10 +197,6 @@ const CMD23_Data2BatteryVoltage = ref(0)
 const CMD27_Data6SingleMin = ref(0)
 const CurRudder = ref(0)
 const UserSetPower = ref(0)
-const powerslidervalue = ref(60)
-const rudderslidervalue = ref(60)
-const powerbuttoncolor = ref('#757575')
-const rudderbuttoncolor = ref('#757575')
 
 // 连接状态
 const LocalOK = ref(false)
@@ -58,60 +204,116 @@ const RemoteOK = ref(false)
 const USVOnline = ref(false)
 const RxCount = ref(0)
 
+// 方向控制
+const activeDirection = ref('')
+
+// 船只朝向
+const shipRotate = computed(() => {
+  return usvStore.ships[shipid]?.ship?.rotate || 0
+})
+
 // 地图数据
 const markers = ref<any[]>([])
 const polyline = ref<Polyline[]>([
-  {
-    points: [],
-    color: '#ff7043',
-    width: 1,
-  },
-  {
-    points: [],
-    color: '#3875FF',
-    width: 1,
-  },
+  { points: [], color: '#ff7043', width: 1 },
+  { points: [], color: '#3875FF', width: 1 },
 ])
 
-/**
- * 更新航点显示
- */
+// 方向控制
+function onDirectionTap(dir: string) {
+  activeDirection.value = dir
+  const step = 10
+  switch (dir) {
+    case 'left':
+      CurRudder.value = Math.max(-100, CurRudder.value - step)
+      break
+    case 'right':
+      CurRudder.value = Math.min(100, CurRudder.value + step)
+      break
+    case 'up':
+    case 'down':
+      // 上下可用于其他控制
+      break
+  }
+  usvStore.ships[shipid].rudder = CurRudder.value
+  setTimeout(() => { activeDirection.value = '' }, 150)
+}
+
+let wheelTouchStartX = 0
+function onWheelTouchStart(e: any) {
+  wheelTouchStartX = e.touches[0].clientX
+}
+
+function onWheelTouchMove(e: any) {
+  const deltaX = e.touches[0].clientX - wheelTouchStartX
+  const sensitivity = 0.5
+  let newRudder = CurRudder.value + deltaX * sensitivity
+  newRudder = Math.max(-100, Math.min(100, newRudder))
+  CurRudder.value = Math.round(newRudder)
+  usvStore.ships[shipid].rudder = CurRudder.value
+  wheelTouchStartX = e.touches[0].clientX
+}
+
+function onWheelTouchEnd() {
+  activeDirection.value = ''
+}
+
+// 速度控制
+function onSpeedUp() {
+  UserSetPower.value = Math.min(100, UserSetPower.value + 10)
+  usvStore.ships[shipid].power = UserSetPower.value
+}
+
+function onSpeedDown() {
+  UserSetPower.value = Math.max(-100, UserSetPower.value - 10)
+  usvStore.ships[shipid].power = UserSetPower.value
+}
+
+let speedInterval: ReturnType<typeof setInterval> | null = null
+function onSpeedUpLong() {
+  speedInterval = setInterval(() => {
+    onSpeedUp()
+  }, 100)
+}
+
+function onSpeedDownLong() {
+  speedInterval = setInterval(() => {
+    onSpeedDown()
+  }, 100)
+}
+
+// 地图切换
+function toggleMapView() {
+  showMap.value = !showMap.value
+}
+
+// 更新航点显示
 function updatewaypoints() {
   const crossmarker = usvStore.crossmarker
   const ships = usvStore.ships
   const currentShip = ships[shipid]
-
   markers.value = [
     ...crossmarker,
     ...ships.map(s => s.ship),
     currentShip.plos,
     ...currentShip.waypoints,
   ]
-
   polyline.value[0].points = currentShip.waypoints.map(wp => ({
     latitude: wp.latitude,
     longitude: wp.longitude,
   }))
-
   polyline.value[1].points = currentShip.points
 }
 
-/**
- * 更新船舶位置
- */
 function updateships() {
-  const ships = usvStore.ships
   updatewaypoints()
 }
 
-/**
- * 开始定时发送
- */
+// 定时发送
 function startInter() {
   interval = setInterval(() => {
     rudderdragtime++
     if (rxTimeOut < 0 || rxTimeOut > 20) {
-      console.log('RxTimeOut:', rxTimeOut)
       writeBLECharacteristicValue()
       rxTimeOut = 1
     }
@@ -119,178 +321,72 @@ function startInter() {
   }, 50)
 }
 
-/**
- * 写入蓝牙特征值
- */
 function writeBLECharacteristicValue() {
+  if (!deviceId.value || !serviceId.value || !characteristicId.value) return
   const ship = usvStore.ships[shipid]
-  // 使用 UserSetPower 而不是 ship.power，与原始代码保持一致
   const arr = getTxBuf(shipid, UserSetPower.value, -ship.rudder)
-
   const buffer = new Uint8Array(arr).buffer
   uni.writeBLECharacteristicValue({
     deviceId: deviceId.value,
     serviceId: serviceId.value,
     characteristicId: characteristicId.value,
     value: buffer as any,
-    fail: (res) => {
+    fail: () => {
       timeout++
-      if (timeout > 1) {
-        reconnectBLE()
-      }
-      uni.showToast({
-        title: '发送失败',
-        icon: 'none',
-      })
+      if (timeout > 1) reconnectBLE()
     },
-    success: () => {
-      timeout = 0
-    },
+    success: () => { timeout = 0 },
   })
 }
 
-/**
- * 重连蓝牙
- */
 function reconnectBLE() {
-  if (!connectedDeviceId.value || connectedDeviceId.value === '0') {
-    return
-  }
-
-  console.log('尝试重连蓝牙:', connectedDeviceId.value)
+  if (!connectedDeviceId.value || connectedDeviceId.value === '0') return
   uni.createBLEConnection({
     deviceId: connectedDeviceId.value,
     success: () => {
-      console.log('重连成功，重新获取服务')
-      setTimeout(() => {
-        getBLEDeviceServices(connectedDeviceId.value)
-      }, 500)
+      setTimeout(() => getBLEDeviceServices(connectedDeviceId.value), 500)
     },
-    fail: (res) => {
-      console.error('重连失败:', res)
-      let errorMsg = '重连失败'
-      if (res.errCode === 10003) {
-        errorMsg = '设备连接失败'
-      }
-      else if (res.errCode === 10004) {
-        errorMsg = '设备未找到'
-      }
-      uni.showToast({
-        title: errorMsg,
-        icon: 'none',
-        duration: 2000,
-      })
-    },
+    fail: () => {},
   })
 }
 
-/**
- * 获取蓝牙设备服务
- */
 function getBLEDeviceServices(deviceIdParam: string) {
-  if (!deviceIdParam || deviceIdParam === '0') {
-    return
-  }
-
+  if (!deviceIdParam || deviceIdParam === '0') return
   uni.getBLEDeviceServices({
     deviceId: deviceIdParam,
-    fail: (res) => {
-      console.error('获取服务失败:', res)
-      let errorMsg = '获取服务失败'
-      if (res.errCode === 10001) {
-        errorMsg = '蓝牙适配器未初始化'
-      }
-      else if (res.errCode === 10003) {
-        errorMsg = '设备连接失败，请重试'
-        // 尝试重连
-        setTimeout(() => {
-          reconnectBLE()
-        }, 1000)
-      }
-      uni.showToast({
-        title: errorMsg,
-        icon: 'none',
-        duration: 2000,
-      })
-    },
     success: (res) => {
-      console.log('获取服务成功', res.services)
-      let found = false
       for (let i = 0; i < res.services.length; i++) {
-        const uuid = res.services[i].uuid
-        if (usvStore.bleserviceuuid.includes(uuid)) {
-          found = true
-          getBLEDeviceCharacteristics(deviceIdParam, uuid)
+        if (usvStore.bleserviceuuid.includes(res.services[i].uuid)) {
+          getBLEDeviceCharacteristics(deviceIdParam, res.services[i].uuid)
           return
         }
       }
-      if (!found) {
-        console.error('未找到匹配的服务 UUID')
-        uni.showToast({
-          title: '未找到匹配的服务',
-          icon: 'none',
-          duration: 2000,
-        })
-      }
     },
+    fail: () => {},
   })
 }
 
-/**
- * 获取蓝牙特征值
- */
 function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: string) {
   uni.getBLEDeviceCharacteristics({
     deviceId: deviceIdParam,
     serviceId: serviceIdParam,
     success: (res) => {
-      console.log('获取特征值成功', res.characteristics)
       timeout = 0
       deviceId.value = deviceIdParam
       serviceId.value = serviceIdParam
-
-      let foundTxCharacteristic = false
-
       for (let i = 0; i < res.characteristics.length; i++) {
         const item = res.characteristics[i]
         if (item.properties.read) {
-          uni.readBLECharacteristicValue({
-            deviceId: deviceIdParam,
-            serviceId: serviceIdParam,
-            characteristicId: item.uuid,
-            fail: (err) => {
-              console.warn('读取特征值失败:', err)
-            },
-          })
+          uni.readBLECharacteristicValue({ deviceId: deviceIdParam, serviceId: serviceIdParam, characteristicId: item.uuid })
         }
         if (usvStore.bletxuuid.includes(item.uuid)) {
-          foundTxCharacteristic = true
           characteristicId.value = item.uuid
           writeBLECharacteristicValue()
         }
         if (item.properties.notify || item.properties.indicate) {
-          uni.notifyBLECharacteristicValueChange({
-            deviceId: deviceIdParam,
-            serviceId: serviceIdParam,
-            characteristicId: item.uuid,
-            state: true,
-            fail: (err) => {
-              console.warn('启用通知失败:', err)
-            },
-          })
+          uni.notifyBLECharacteristicValueChange({ deviceId: deviceIdParam, serviceId: serviceIdParam, characteristicId: item.uuid, state: true })
         }
       }
-
-      if (!foundTxCharacteristic) {
-        console.error('未找到匹配的发送特征 UUID')
-        uni.showToast({
-          title: '未找到匹配的特征',
-          icon: 'none',
-          duration: 2000,
-        })
-      }
-
-      // 初始化航点
       for (let i = 0; i < usvStore.ships.length; i++) {
         startUpdateWayPoint(i)
         for (let j = 0; j < usvStore.ships[i].waypoints.length; j++) {
@@ -300,54 +396,23 @@ function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: stri
         endUpdateWayPoint(i)
       }
     },
-    fail: (res) => {
-      console.error('获取特征值失败:', res)
-      let errorMsg = '获取特征值失败'
-      if (res.errCode === 10001) {
-        errorMsg = '蓝牙适配器未初始化'
-      }
-      else if (res.errCode === 10003) {
-        errorMsg = '设备连接失败，请重试'
-        setTimeout(() => {
-          reconnectBLE()
-        }, 1000)
-      }
-      uni.showToast({
-        title: errorMsg,
-        icon: 'none',
-        duration: 2000,
-      })
-    },
+    fail: () => {},
   })
-
   onBLEDateReceiverd()
 }
 
-/**
- * 蓝牙数据接收处理
- */
 function onBLEDateReceiverd() {
   uni.onBLECharacteristicValueChange((characteristic) => {
     const buffer = characteristic.value as unknown as ArrayBuffer
-    if (buffer.byteLength < 5) {
-      return
-    }
-
+    if (buffer.byteLength < 5) return
     const view = new DataView(buffer)
     const arr: number[] = []
-    for (let i = 0; i < view.byteLength - 2; i++) {
-      arr.push(view.getInt8(i))
-    }
-
+    for (let i = 0; i < view.byteLength - 2; i++) arr.push(view.getInt8(i))
     const calcCrc = compute(arr, arr.length)
     const recCrc = view.getInt16(view.byteLength - 2, false) & 0xFFFF
-
-    if (calcCrc !== recCrc) {
-      return
-    }
+    if (calcCrc !== recCrc) return
 
     const id = view.getUint8(0)
-
     if (id === shipid) {
       LocalOK.value = (view.getInt8(2) & 0x02) !== 0
       RemoteOK.value = (view.getInt8(2) & 0x04) !== 0
@@ -359,19 +424,12 @@ function onBLEDateReceiverd() {
         const lat = view.getInt32(6, true) / 1000000.0
         const lng = view.getInt32(10, true) / 1000000.0
         const result = wgs84ToGcj02(lng, lat)
-        const point = [{
-          latitude: result[1],
-          longitude: result[0],
-        }]
-
+        const point = [{ latitude: result[1], longitude: result[0] }]
         const ship = usvStore.ships[id]
         if (ship.points.length === 0 || getRealDistance(result[0], result[1], ship.points[ship.points.length - 1].longitude, ship.points[ship.points.length - 1].latitude) > 8) {
           ship.points = ship.points.concat(point)
         }
-        if (ship.points.length > 500) {
-          ship.points = ship.points.slice(1, ship.points.length)
-        }
-
+        if (ship.points.length > 500) ship.points = ship.points.slice(1)
         ship.ship.rotate = view.getInt16(4, true) / 10.0
         ship.ship.longitude = result[0]
         ship.ship.latitude = result[1]
@@ -379,62 +437,32 @@ function onBLEDateReceiverd() {
         break
       }
       case 1: {
-        const lat = view.getInt32(14, true) / 1000000.0
-        const lng = view.getInt32(10, true) / 1000000.0
-        const result = wgs84ToGcj02(lng, lat)
         if (id === shipid) {
-          const ship = usvStore.ships[shipid]
-          ship.plos.longitude = result[0]
-          ship.plos.latitude = result[1]
           CMD23_Data2BatteryVoltage.value = Number((view.getInt16(8, true) / 10.0).toFixed(1))
-          updatewaypoints()
         }
         break
       }
       case 2: {
-        const lat = view.getInt32(14, true) / 1000000.0
-        const lng = view.getInt32(10, true) / 1000000.0
-        const result = wgs84ToGcj02(lng, lat)
         if (id === shipid) {
-          const ship = usvStore.ships[shipid]
-          ship.plos.longitude = result[0]
-          ship.plos.latitude = result[1]
           CMD25_Data2Power.value = view.getInt16(8, true)
-          updatewaypoints()
         }
         break
       }
       case 3: {
-        const lat = view.getInt32(14, true) / 1000000.0
-        const lng = view.getInt32(10, true) / 1000000.0
-        const result = wgs84ToGcj02(lng, lat)
         if (id === shipid) {
-          const ship = usvStore.ships[shipid]
-          ship.plos.longitude = result[0]
-          ship.plos.latitude = result[1]
           SpeedKnot.value = Number((view.getInt16(4, true) / 10.0).toFixed(1))
           CMD27_Data6SingleMin.value = view.getInt16(8, true)
-          updatewaypoints()
         }
         break
       }
-      case 4:
-      case 5:
-      case 6:
-      case 7:
-      case 8:
-      case 9:
-      case 10:
-      case 11:
+      case 4: case 5: case 6: case 7: case 8: case 9: case 10: case 11:
         removeInstruction(id, view.getInt8(1), view.getInt16(4))
         break
       case 0xFF:
         usvStore.Observe = true
         clearInstructions()
         switch (view.getUint8(2)) {
-          case 5:
-            startUpdateWayPointLocal()
-            break
+          case 5: startUpdateWayPointLocal(); break
           case 6: {
             const lng = view.getInt32(7) / 1000000.0
             const lat = view.getInt32(11) / 1000000.0
@@ -442,201 +470,62 @@ function onBLEDateReceiverd() {
             updateWayPointLocal(view.getInt16(5), result[0], result[1])
             break
           }
-          case 7:
-            endUpdateWayPointLocal()
-            break
+          case 7: endUpdateWayPointLocal(); break
         }
         break
-      default:
-        break
     }
-
     rxTimeOut = 20
     RxCount.value++
-
     if (id === shipid && rudderdragtime > 20) {
       CurRudder.value = view.getInt8(3)
     }
   })
 }
 
-/**
- * 开始更新航点
- */
 function startUpdateWayPointLocal() {
-  usvStore.ships[shipid].waypoints.forEach((element) => {
-    element.updated = false
-  })
+  usvStore.ships[shipid].waypoints.forEach(e => e.updated = false)
 }
 
-/**
- * 更新航点
- */
 function updateWayPointLocal(id: number, lng: number, lat: number) {
   let ok = false
-  usvStore.ships[shipid].waypoints.forEach((item) => {
-    if (item.id === id) {
-      ok = true
-      item.latitude = lat
-      item.longitude = lng
-      updatewaypoints()
-    }
+  usvStore.ships[shipid].waypoints.forEach(item => {
+    if (item.id === id) { ok = true; item.latitude = lat; item.longitude = lng; updatewaypoints() }
   })
-
   if (!ok) {
-    const point: WayPoint = {
-      id,
-      anchor: { x: 0.5, y: 1 },
-      iconPath: '/static/images/reddotmark.png',
-      width: 20,
-      height: 20,
-      latitude: lat,
-      longitude: lng,
-      selected: false,
-      updated: true,
-    }
-
-    for (let i = 0; i < usvStore.ships[shipid].waypoints.length; i++) {
-      if (!usvStore.ships[shipid].waypoints[i].updated) {
-        usvStore.ships[shipid].waypoints.splice(i, 0, point as any)
-        ok = true
-        break
-      }
-    }
-    if (!ok) {
-      usvStore.ships[shipid].waypoints.push(point as any)
-    }
+    const point: WayPoint = { id, anchor: { x: 0.5, y: 1 }, iconPath: '/static/images/reddotmark.png', width: 20, height: 20, latitude: lat, longitude: lng, selected: false, updated: true }
+    usvStore.ships[shipid].waypoints.push(point as any)
     updatewaypoints()
   }
 }
 
-/**
- * 结束更新航点
- */
 function endUpdateWayPointLocal() {
-  for (let i = 0; i < usvStore.ships[shipid].waypoints.length; i++) {
-    if (!usvStore.ships[shipid].waypoints[i].updated) {
-      usvStore.ships[shipid].waypoints.splice(i, 1)
-    }
+  for (let i = usvStore.ships[shipid].waypoints.length - 1; i >= 0; i--) {
+    if (!usvStore.ships[shipid].waypoints[i].updated) usvStore.ships[shipid].waypoints.splice(i, 1)
   }
   updatewaypoints()
 }
 
-/**
- * 功率滑块拖动
- */
-function onPowerDrag(event: any) {
-  let result = 0
-  let color = '#757575'
-  const value = 60 - Number(event.detail.value)
-
-  if (value < -10 || value > 10) {
-    result = value
-  }
-
-  if (result < 0) {
-    result = result + 10
-    color = '#ff7043'
-  }
-  else if (result > 0) {
-    result = result - 10
-    color = '#00b26a'
-  }
-
-  const powerValue = Number((result * 2).toFixed(0))
-  usvStore.ships[shipid].power = powerValue
-  UserSetPower.value = powerValue
-  powerslidervalue.value = event.detail.value
-  powerbuttoncolor.value = color
-}
-
-/**
- * 舵角滑块拖动
- */
-function onRudderDrag(event: any) {
-  rudderdragtime = 0
-  if (userAccelerometer.value || !getEnableManual(shipid)) {
-    return
-  }
-
-  let result = 0
-  let color = '#757575'
-  const value = 60 - Number(event.detail.value)
-
-  if (value < -10 || value > 10) {
-    result = value
-  }
-
-  if (result < 0) {
-    result = result + 10
-    color = '#ff7043'
-  }
-  else if (result > 0) {
-    result = result - 10
-    color = '#ff7043'
-  }
-
-  const rudderValue = Number((-result * 2).toFixed(0))
-  usvStore.ships[shipid].rudder = rudderValue
-  rudderslidervalue.value = event.detail.value
-  CurRudder.value = rudderValue
-  rudderbuttoncolor.value = color
-}
-
-/**
- * 自动模式切换
- */
 function autoChange(e: any) {
   setEnableManual(shipid, !e.detail.value)
   EnableAuto.value = !getEnableManual(shipid)
 }
 
-/**
- * 加速度计开关
- */
 function userAccelerometerChange(e: any) {
   usvStore.setUserAccelerometer(e.detail.value)
   userAccelerometer.value = e.detail.value
 }
 
-/**
- * 设置舵机零点
- */
-function forceSetZPoint() {
-  setForceSetZPoint(shipid)
-}
+function forceSetZPoint() { setForceSetZPoint(shipid); uni.showToast({ title: '已设置', icon: 'success' }) }
+function calibINS() { setCalibINS(shipid); uni.showToast({ title: '开始标定', icon: 'success' }) }
+function showsettings() { ShowSettings.value = !ShowSettings.value }
 
-/**
- * 标定磁力计
- */
-function calibINS() {
-  setCalibINS(shipid)
-}
-
-/**
- * 添加航点
- */
 function addWayPoint() {
   const mapCtx = uni.createMapContext('mapId')
   mapCtx.getCenterLocation({
     success: (res) => {
       let id = 0
-      if (usvStore.ships[shipid].waypoints.length > 0) {
-        id = usvStore.ships[shipid].waypoints[usvStore.ships[shipid].waypoints.length - 1].id + 1
-      }
-
-      const point: WayPoint = {
-        id,
-        anchor: { x: 0.5, y: 1 },
-        iconPath: '/static/images/reddotmark.png',
-        width: 20,
-        height: 20,
-        latitude: res.latitude,
-        longitude: res.longitude,
-        selected: false,
-        updated: false,
-      }
-
+      if (usvStore.ships[shipid].waypoints.length > 0) id = usvStore.ships[shipid].waypoints[usvStore.ships[shipid].waypoints.length - 1].id + 1
+      const point: WayPoint = { id, anchor: { x: 0.5, y: 1 }, iconPath: '/static/images/reddotmark.png', width: 20, height: 20, latitude: res.latitude, longitude: res.longitude, selected: false, updated: false }
       usvStore.addWayPoint(shipid, point)
       updatewaypoints()
       stm32AddWayPoint(shipid, id, res.longitude, res.latitude)
@@ -644,9 +533,6 @@ function addWayPoint() {
   })
 }
 
-/**
- * 删除选中航点
- */
 function deleteWayPoint() {
   const waypoints = usvStore.ships[shipid].waypoints
   for (let i = waypoints.length - 1; i >= 0; i--) {
@@ -658,13 +544,9 @@ function deleteWayPoint() {
   updatewaypoints()
 }
 
-/**
- * 删除所有航点
- */
 function deleteAllWayPoint() {
   uni.showModal({
-    title: '确认删除',
-    content: '确定要删除所有航点吗？',
+    title: '确认', content: '删除所有航点？',
     success: (res) => {
       if (res.confirm) {
         stm32DeleteAllWayPoint(shipid)
@@ -675,156 +557,63 @@ function deleteAllWayPoint() {
   })
 }
 
-/**
- * 显示设置
- */
-function showsettings() {
-  ShowSettings.value = !ShowSettings.value
-}
-
-/**
- * 地图点击
- */
 function onMapTap() {
-  let sel = false
-  usvStore.ships[shipid].waypoints.forEach((item) => {
-    if (item.selected) {
-      sel = true
-    }
-    item.width = 20
-    item.height = 20
-    item.selected = false
-  })
-
-  usvStore.ships.forEach((sp) => {
-    sp.ship.width = 30
-    sp.ship.height = 30
-  })
-
+  usvStore.ships[shipid].waypoints.forEach(item => { item.width = 20; item.height = 20; item.selected = false })
+  usvStore.ships.forEach(sp => { sp.ship.width = 30; sp.ship.height = 30 })
   usvStore.ships[shipid].ship.width = 45
   usvStore.ships[shipid].ship.height = 45
-
-  // 原始代码中 sel 总是为 true，所以总是更新显示
-  sel = true
-  if (sel) {
-    CurRudder.value = Number(usvStore.ships[shipid].rudder)
-    UserSetPower.value = Number(usvStore.ships[shipid].power)
-    updatewaypoints()
-  }
-
+  updatewaypoints()
   EnableAuto.value = !getEnableManual(shipid)
 }
 
-/**
- * 标记点点击
- */
 function onMarkerTap(e: any) {
-  usvStore.ships[shipid].waypoints.forEach((item) => {
-    item.width = 20
-    item.height = 20
-    item.selected = false
-    if (e.markerId === item.id) {
-      item.width = 25
-      item.height = 25
-      item.selected = true
-      const mapCtx = uni.createMapContext('mapId')
-      mapCtx.moveToLocation({
-        latitude: item.latitude,
-        longitude: item.longitude,
-      })
-      const crossmarker = usvStore.crossmarker[0]
-      crossmarker.longitude = item.longitude
-      crossmarker.latitude = item.latitude
-      updatewaypoints()
-    }
+  usvStore.ships[shipid].waypoints.forEach(item => {
+    item.width = 20; item.height = 20; item.selected = false
+    if (e.markerId === item.id) { item.width = 25; item.height = 25; item.selected = true }
   })
-
-  usvStore.ships.forEach((sp) => {
-    sp.ship.width = 30
-    sp.ship.height = 30
-  })
-
-  // 切换船舶
   for (let i = 0; i < usvStore.ships.length; i++) {
-    if (usvStore.ships[i].ship.id === e.markerId) {
-      shipid = i
-      break
-    }
+    if (usvStore.ships[i].ship.id === e.markerId) { shipid = i; break }
   }
-
   usvStore.ships[shipid].ship.width = 45
   usvStore.ships[shipid].ship.height = 45
-
   CurRudder.value = Number(usvStore.ships[shipid].rudder)
   UserSetPower.value = Number(usvStore.ships[shipid].power)
   EnableAuto.value = !getEnableManual(shipid)
   updatewaypoints()
 }
 
-/**
- * 地图区域变化
- */
 function onRegionChange(event: any) {
   if (event.type === 'end' && event.causedBy === 'drag') {
     const mapCtx = uni.createMapContext('mapId')
     mapCtx.getCenterLocation({
       success: (res) => {
-        const latitude = res.latitude
-        const longitude = res.longitude
-
-        usvStore.ships[shipid].waypoints.forEach((item) => {
+        usvStore.ships[shipid].waypoints.forEach(item => {
           if (item.selected) {
-            item.latitude = latitude
-            item.longitude = longitude
+            item.latitude = res.latitude
+            item.longitude = res.longitude
             stm32ModifyWayPoint(shipid, item.id, res.longitude, res.latitude)
             usvStore.saveShipsToStorage()
             updatewaypoints()
           }
         })
-
-        // 更新十字标记位置
-        usvStore.crossmarker[0].latitude = latitude
-        usvStore.crossmarker[0].longitude = longitude
-        mapCtx.getScale({
-          success: (scaleRes) => {
-            usvStore.crossmarker[0].mapscale = scaleRes.scale
-            mapscale.value = scaleRes.scale
-            usvStore.saveCrossMarkerToStorage()
-            updatewaypoints()
-          },
-        })
+        usvStore.crossmarker[0].latitude = res.latitude
+        usvStore.crossmarker[0].longitude = res.longitude
+        usvStore.saveCrossMarkerToStorage()
       },
     })
   }
 }
 
-/**
- * 加速度计变化监听
- */
 function onAccelerometerChange(res: any) {
-  if (!userAccelerometer.value || !getEnableManual(shipid)) {
-    return
-  }
-
+  if (!userAccelerometer.value || !getEnableManual(shipid)) return
   let result = 0
   const value = res.y * 100
-
-  if (value < -15 || value > 15) {
-    result = value
-  }
-
-  if (result < 0) {
-    result = result + 15
-  }
-  else if (result > 0) {
-    result = result - 15
-  }
-
+  if (value < -15 || value > 15) result = value
+  if (result < 0) result += 15
+  else if (result > 0) result -= 15
   result = Number((-(result * 3)).toFixed(0))
-
   const ship = usvStore.ships[shipid]
-  const currentRudder = Number(ship.rudder)
-  if (result === 0 || currentRudder - result > 2 || currentRudder - result < -2) {
+  if (result === 0 || Math.abs(Number(ship.rudder) - result) > 2) {
     ship.rudder = result
     CurRudder.value = result
   }
@@ -835,376 +624,323 @@ onLoad((options: Record<string, string>) => {
   connectedDevicename.value = decodeURIComponent(options.connectedDevicename || '0')
   userAccelerometer.value = usvStore.userAccelerometer
   mapscale.value = usvStore.crossmarker[0].mapscale
-
   updatewaypoints()
-
-  const mapCtx = uni.createMapContext('mapId')
-  const crossmarker = usvStore.crossmarker[0]
-  mapCtx.moveToLocation({
-    latitude: crossmarker.latitude,
-    longitude: crossmarker.longitude,
-  })
-
-  // 监听加速度计
   uni.onAccelerometerChange(onAccelerometerChange)
 })
 
-/**
- * 页面渲染完成
- */
 onReady(() => {
-  // 初始化蓝牙连接（在页面渲染完成后进行，确保连接稳定）
   if (connectedDeviceId.value && connectedDeviceId.value !== '0') {
-    console.log('开始获取蓝牙服务:', connectedDeviceId.value)
     getBLEDeviceServices(connectedDeviceId.value)
     startInter()
   }
-
-  // 监听蓝牙连接断开
   uni.onBLEConnectionStateChange((res) => {
-    console.log('蓝牙连接状态变化:', res)
-    if (!res.connected) {
-      console.warn('蓝牙连接已断开')
-      uni.showToast({
-        title: '蓝牙连接已断开',
-        icon: 'none',
-        duration: 2000,
-      })
-      // 尝试重连
-      if (connectedDeviceId.value && connectedDeviceId.value !== '0') {
-        setTimeout(() => {
-          reconnectBLE()
-        }, 1000)
-      }
+    if (!res.connected && connectedDeviceId.value && connectedDeviceId.value !== '0') {
+      setTimeout(() => reconnectBLE(), 1000)
     }
   })
 })
 
 onMounted(() => {
-  // 保持屏幕常亮
-  uni.setKeepScreenOn({
-    keepScreenOn: true,
+  uni.setKeepScreenOn({ keepScreenOn: true })
+  document.addEventListener('touchend', () => {
+    if (speedInterval) { clearInterval(speedInterval); speedInterval = null }
   })
 })
 
 onUnmounted(() => {
-  if (interval) {
-    clearInterval(interval)
-  }
+  if (interval) clearInterval(interval)
+  if (speedInterval) clearInterval(speedInterval)
   uni.stopBluetoothDevicesDiscovery()
   if (connectedDeviceId.value && connectedDeviceId.value !== '0') {
-    uni.closeBLEConnection({
-      deviceId: connectedDeviceId.value,
-    })
+    uni.closeBLEConnection({ deviceId: connectedDeviceId.value })
   }
   uni.closeBluetoothAdapter()
 })
 </script>
 
-<template>
-  <view class="container-row">
-    <view
-      v-if="userAccelerometer"
-      class="fixed-height"
-    >
-      <text class="page-body-title">当前舵角: {{ CurRudder }}</text>
-    </view>
-    <view class="auto-full-height">
-      <view class="container-column">
-        <view class="auto-full-width">
-          <map
-            id="mapId"
-            class="map"
-            :latitude="usvStore.crossmarker[0].latitude"
-            :longitude="usvStore.crossmarker[0].longitude"
-            :scale="mapscale"
-            :markers="markers"
-            :polyline="polyline"
-            @regionchange="onRegionChange"
-            @markertap="onMarkerTap"
-            @tap="onMapTap"
-          >
-            <view class="map-button">
-              <view class="map-button1">
-                <switch
-                  :model-value="EnableAuto"
-                  @change="autoChange"
-                >
-                  自动
-                </switch>
-                <wd-button
-                  type="primary"
-                  size="small"
-                  @click="addWayPoint"
-                >
-                  添加点
-                </wd-button>
-                <wd-button
-                  type="warning"
-                  size="small"
-                  @click="deleteWayPoint"
-                >
-                  删除点
-                </wd-button>
-                <wd-button
-                  type="info"
-                  size="small"
-                  @click="showsettings"
-                >
-                  设置
-                </wd-button>
-              </view>
-              <view
-                v-if="ShowSettings"
-                class="map-settings"
-              >
-                <wd-button
-                  type="error"
-                  size="small"
-                  @click="deleteAllWayPoint"
-                >
-                  删除所有路径
-                </wd-button>
-                <wd-button
-                  type="warning"
-                  size="small"
-                  @click="forceSetZPoint"
-                >
-                  设置舵机零点
-                </wd-button>
-                <wd-button
-                  type="info"
-                  size="small"
-                  @click="calibINS"
-                >
-                  标定磁力计
-                </wd-button>
-                <switch
-                  :model-value="userAccelerometer"
-                  @change="userAccelerometerChange"
-                >
-                  加速度计
-                </switch>
-              </view>
-            </view>
-          </map>
-        </view>
-      </view>
-    </view>
-    <view class="fixed-height slider-container">
-      <view class="slider-item">
-        <view class="slider-wrapper">
-          <slider
-            :value="powerslidervalue"
-            :max="120"
-            :min="0"
-            :step="1"
-            active-color="#f8f8f8"
-            inactive-color="#f8f8f8"
-            block-color="#ffffff"
-            :block-size="20"
-            @change="onPowerDrag"
-          />
-        </view>
-        <view
-          class="slider-button"
-          :style="{ backgroundColor: powerbuttoncolor }"
-        >
-          {{ UserSetPower }}
-        </view>
-      </view>
-      <view class="slider-item">
-        <view class="slider-wrapper">
-          <slider
-            :value="rudderslidervalue"
-            :max="120"
-            :min="0"
-            :step="1"
-            active-color="#f8f8f8"
-            inactive-color="#f8f8f8"
-            block-color="#ffffff"
-            :block-size="20"
-            @change="onRudderDrag"
-          />
-        </view>
-        <view
-          class="slider-button"
-          :style="{ backgroundColor: rudderbuttoncolor }"
-        >
-          {{ CurRudder }}
-        </view>
-      </view>
-    </view>
-    <view class="fixed-height status-bar">
-      <view class="status-info">
-        <view class="status-item">
-          <text class="label">功率:</text>
-          <text class="value">{{ CMD25_Data2Power }}W</text>
-        </view>
-        <view class="status-item">
-          <text class="label">电压:</text>
-          <text class="value">{{ CMD23_Data2BatteryVoltage }}V</text>
-        </view>
-        <view class="status-item">
-          <text class="label">速度:</text>
-          <text class="value">{{ SpeedKnot }}</text>
-        </view>
-        <view class="status-item">
-          <text class="label">运行时间:</text>
-          <text class="value">{{ CMD27_Data6SingleMin }}</text>
-        </view>
-      </view>
-      <view class="status-indicators">
-        <view
-          class="indicator"
-          :class="{ 'indicator-ok': LocalOK, 'indicator-error': !LocalOK }"
-        >
-          主控
-        </view>
-        <view
-          class="indicator"
-          :class="{ 'indicator-ok': USVOnline, 'indicator-error': !USVOnline }"
-        >
-          基站
-        </view>
-        <view
-          class="indicator"
-          :class="{ 'indicator-ok': RemoteOK, 'indicator-error': !RemoteOK }"
-        >
-          遥控
-        </view>
-        <view class="rx-count">
-          {{ RxCount }}
-        </view>
-      </view>
-    </view>
-  </view>
-</template>
-
-<style lang="scss" scoped>
-.container-row {
-  width: 100%;
+<style scoped>
+.page-container {
+  width: 100vw;
   height: 100vh;
-  background-color: #f8f8f8;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(180deg, #1a3a5c 0%, #0d1f33 100%);
+  overflow: hidden;
 }
 
-.fixed-height {
-  flex: 0 0 auto;
+/* 顶部标题栏 */
+.header-bar {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.auto-full-height {
-  flex: 1 1 auto;
-  position: relative;
+.header-title {
+  font-size: 16px;
+  color: #fff;
+  font-weight: bold;
+  letter-spacing: 4px;
 }
 
-.container-column {
-  background-color: transparent;
-  position: absolute;
+/* 主控制区域 */
+.control-area {
+  flex: 1;
   display: flex;
   flex-direction: row;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  padding: 10px;
+  gap: 10px;
 }
 
-.auto-full-width {
-  flex: 1 1 auto;
+/* 左侧方向控制盘 */
+.direction-panel {
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.direction-wheel {
+  width: 140px;
+  height: 140px;
   position: relative;
 }
 
-.map {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
+.wheel-outer {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #2a5a8a, #1a3a5c);
+  border: 3px solid #4a9eff;
+  box-shadow: 0 0 20px rgba(74, 158, 255, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.5);
+  position: relative;
 }
 
-.page-body-title {
-  display: inline-block;
-  width: 150px;
-  padding: 8px;
-  font-size: 14px;
-  color: #333;
-}
-
-.map-button {
+.wheel-btn {
   position: absolute;
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  padding: 8px;
+  width: 40px;
+  height: 40px;
   display: flex;
-  flex-direction: row;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  margin: 10px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
-.map-button1 {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 98px;
+.wheel-btn.active {
+  transform: scale(1.1);
 }
 
-.map-settings {
-  margin-left: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 150px;
+.wheel-btn.active .arrow {
+  color: #4a9eff;
+  text-shadow: 0 0 10px #4a9eff;
 }
 
-.slider-container {
-  display: flex;
-  flex-direction: row;
-  background-color: #ffffff;
-  border-top: 1px solid #e0e0e0;
-  padding: 0 16px;
-  gap: 16px;
+.arrow {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.slider-item {
+.wheel-up { top: 5px; left: 50%; transform: translateX(-50%); }
+.wheel-right { right: 5px; top: 50%; transform: translateY(-50%); }
+.wheel-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
+.wheel-left { left: 5px; top: 50%; transform: translateY(-50%); }
+
+.wheel-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #3a7abf, #2a5a8a);
+  border: 2px solid #4a9eff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.center-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4a9eff;
+  box-shadow: 0 0 10px #4a9eff;
+}
+
+.direction-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 中间罗盘 */
+.compass-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  // gap: 8px;
+  justify-content: center;
+  position: relative;
 }
 
-.slider-wrapper {
+.compass-container {
+  width: 180px;
+  height: 180px;
+}
+
+.compass-ring {
   width: 100%;
-  padding: 0 8px;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1a3a5c 0%, #0d1f33 100%);
+  border: 3px solid #ff4444;
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+  position: relative;
 }
 
-.slider-button {
+.compass-dir {
+  position: absolute;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.compass-n { top: 8px; left: 50%; transform: translateX(-50%); color: #ff4444; }
+.compass-e { right: 8px; top: 50%; transform: translateY(-50%); }
+.compass-s { bottom: 8px; left: 50%; transform: translateX(-50%); }
+.compass-w { left: 8px; top: 50%; transform: translateY(-50%); }
+
+.compass-cross-h, .compass-cross-v {
+  position: absolute;
+  background: rgba(255, 68, 68, 0.5);
+}
+
+.compass-cross-h {
+  width: 100%;
+  height: 1px;
+  top: 50%;
+  left: 0;
+}
+
+.compass-cross-v {
+  width: 1px;
+  height: 100%;
+  left: 50%;
+  top: 0;
+}
+
+.ship-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  margin-left: -30px;
+  margin-top: -30px;
+  transition: transform 0.3s;
+}
+
+.ship-img {
+  width: 100%;
+  height: 100%;
+}
+
+.map-toggle {
+  position: absolute;
+  bottom: 10px;
+  padding: 6px 16px;
+  background: rgba(74, 158, 255, 0.3);
+  border: 1px solid #4a9eff;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+}
+
+/* 右侧速度控制 */
+.speed-panel {
+  width: 100px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 15px;
+}
+
+.speed-btn {
+  width: 80px;
+  height: 50px;
   border-radius: 8px;
-  width: 60px;
-  height: 20px;
-  font-size: 16px;
-  font-weight: bold;
-  color: #ffffff;
-}
-
-.status-bar {
   display: flex;
-  justify-content: space-between;
+  flex-direction: row;
   align-items: center;
-  padding: 8px 16px;
-  background-color: #ffffff;
-  border-top: 1px solid #e0e0e0;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
-.status-info {
+.speed-btn:active {
+  transform: scale(0.95);
+}
+
+.speed-up {
+  background: linear-gradient(145deg, #2a5a8a, #1a4a7a);
+  border: 2px solid #4a9eff;
+}
+
+.speed-down {
+  background: linear-gradient(145deg, #2a5a8a, #1a4a7a);
+  border: 2px solid #4a9eff;
+}
+
+.speed-label {
+  font-size: 14px;
+  color: #fff;
+}
+
+.speed-icon {
+  font-size: 18px;
+  color: #4a9eff;
+  font-weight: bold;
+}
+
+.speed-display {
   display: flex;
-  gap: 16px;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.speed-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #4a9eff;
+}
+
+.speed-unit {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 底部状态栏 */
+.status-bar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-left, .status-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
 
 .status-item {
@@ -1213,42 +949,126 @@ onUnmounted(() => {
   gap: 4px;
 }
 
-.label {
+.status-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.status-value {
   font-size: 12px;
-  color: #666;
-}
-
-.value {
-  font-size: 14px;
+  color: #fff;
   font-weight: bold;
-  color: #333;
-}
-
-.status-indicators {
-  display: flex;
-  gap: 8px;
-  align-items: center;
 }
 
 .indicator {
-  padding: 4px 8px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #fff;
+}
+
+.indicator.ok {
+  background: #38ff92;
+  color: #000;
+}
+
+.indicator.error {
+  background: #ff4444;
+}
+
+.settings-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  font-size: 12px;
-  color: #ffffff;
+  font-size: 16px;
+  color: #fff;
+  cursor: pointer;
 }
 
-.indicator-ok {
-  background-color: #38ff92;
+/* 设置弹窗 */
+.settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
 }
 
-.indicator-error {
-  background-color: #ff7043;
+.settings-content {
+  width: 300px;
+  background: #1a3a5c;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #4a9eff;
 }
 
-.rx-count {
-  font-size: 14px;
+.settings-title {
+  font-size: 18px;
+  color: #fff;
+  text-align: center;
+  margin-bottom: 20px;
   font-weight: bold;
-  color: #333;
-  margin-left: 8px;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  color: #fff;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.settings-btns button {
+  flex: 1 1 45%;
+  min-width: 100px;
+  height: 36px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: none;
+  color: #fff;
+}
+
+.btn-primary { background: #4a9eff; }
+.btn-warning { background: #ff9800; }
+.btn-danger { background: #ff4444; }
+.btn-info { background: #607d8b; }
+
+.btn-close {
+  width: 100%;
+  height: 40px;
+  margin-top: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+}
+
+/* 隐藏地图 */
+.hidden-map {
+  position: fixed;
+  top: 40px;
+  left: 0;
+  right: 0;
+  bottom: 36px;
+  z-index: 50;
 }
 </style>
