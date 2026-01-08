@@ -79,34 +79,6 @@ function isUserLoggedIn(): boolean {
 // 例如：需要登录验证的页面等
 // 以及登录页面、会员中心页面等
 
-// 需要登录验证的页面
-const authPages = [
-  Pages.USER_INFO_EDIT,
-  Pages.VIP_CENTER,
-  //Pages.PRODUCT_LIST,
-  //Pages.PRODUCT_DETAILS,
-  Pages.USER_ACCOUNT_SECURITY,
-  Pages.USER_EDIT_NICKNAME,
-  Pages.USER_ORDER_LIST,
-  Pages.USER_ORDER_DETAILS,
-  Pages.USER_MOBILE,
-  Pages.DISTRIBUTION_CENTER,
-  Pages.DISTRIBUTION_CENTER_DETAILS,
-  Pages.USER_MOBILE_CHANGE,
-  Pages.USER_PERSONAL_INFO,
-  Pages.USER_REMARK,
-  Pages.PRODUCT_ORDER_CONFIRM,
-  Pages.PRODUCT_PAY_MODE,
-  Pages.COUPON_CENTER,
-  Pages.COUPON_LIST,
-  Pages.CUSTOMER_SERVICE,
-  Pages.SHIPPING_ADDRESS_ADDED_OR_EDIT,
-  Pages.SHIPPING_ADDRESS_LIST,
-  Pages.USER_PASSWORD_CONFIG,
-  Pages.WITHDRAWAL,
-  Pages.WITHDRAWAL_RECORD_LIST,
-]
-
 /** 判断是否需要登录 */
 function getBasePath(url: string): string {
   const index = url.indexOf('?')
@@ -301,33 +273,6 @@ function isUserLoggedIn(): boolean {
 // 例如：需要登录验证的页面等
 // 以及登录页面、会员中心页面等
 
-// 需要登录验证的页面
-const authPages = [
-  Pages.USER_INFO_EDIT,
-  Pages.VIP_CENTER,
-  //Pages.PRODUCT_LIST,
-  //Pages.PRODUCT_DETAILS,
-  Pages.USER_ACCOUNT_SECURITY,
-  Pages.USER_EDIT_NICKNAME,
-  Pages.USER_ORDER_LIST,
-  Pages.USER_ORDER_DETAILS,
-  Pages.USER_MOBILE,
-  Pages.DISTRIBUTION_CENTER,
-  Pages.DISTRIBUTION_CENTER_DETAILS,
-  Pages.USER_MOBILE_CHANGE,
-  Pages.USER_PERSONAL_INFO,
-  Pages.USER_REMARK,
-  Pages.PRODUCT_ORDER_CONFIRM,
-  Pages.PRODUCT_PAY_MODE,
-  Pages.COUPON_CENTER,
-  Pages.COUPON_LIST,
-  Pages.CUSTOMER_SERVICE,
-  Pages.SHIPPING_ADDRESS_ADDED_OR_EDIT,
-  Pages.SHIPPING_ADDRESS_LIST,
-  Pages.USER_PASSWORD_CONFIG,
-  Pages.WITHDRAWAL,
-  Pages.WITHDRAWAL_RECORD_LIST,
-]
 
 /** 判断是否需要登录 */
 function getBasePath(url: string): string {

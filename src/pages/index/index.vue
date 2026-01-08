@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useUsvStore } from '@/store/usv'
 import type { BluetoothDevice } from '@/types/bluetooth'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { useUsvStore } from '@/store/usv'
 
 definePage({
   style: {
@@ -306,7 +306,7 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .page-container {
-  min-height: 100vh;
+  height: calc(100vh - 32rpx);
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   flex-direction: column;
@@ -416,7 +416,7 @@ onUnmounted(() => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 80rpx 32rpx;
+  padding: 60rpx 32rpx;
 }
 
 .empty-icon {
@@ -451,7 +451,6 @@ onUnmounted(() => {
 }
 
 .footer {
-  padding-top: 32rpx;
+  padding: 32rpx 0;
 }
 </style>
-
