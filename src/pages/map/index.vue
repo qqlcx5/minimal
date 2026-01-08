@@ -1,139 +1,9 @@
 <template>
   <view class="page-container">
-    <!-- 顶部标题栏 -->
-    <view class="header-bar">
-      <text class="header-title">云台控制</text>
-    </view>
-
-    <!-- 主控制区域 -->
-    <view class="control-area">
-      <!-- 左侧：方向控制盘 -->
-      <view class="direction-panel">
-        <view class="direction-wheel" @touchstart="onWheelTouchStart" @touchmove="onWheelTouchMove" @touchend="onWheelTouchEnd">
-          <!-- 外圈 -->
-          <view class="wheel-outer">
-            <!-- 上 -->
-            <view class="wheel-btn wheel-up" :class="{ active: activeDirection === 'up' }" @tap="onDirectionTap('up')">
-              <text class="arrow">▲</text>
-            </view>
-            <!-- 右 -->
-            <view class="wheel-btn wheel-right" :class="{ active: activeDirection === 'right' }" @tap="onDirectionTap('right')">
-              <text class="arrow">▶</text>
-            </view>
-            <!-- 下 -->
-            <view class="wheel-btn wheel-down" :class="{ active: activeDirection === 'down' }" @tap="onDirectionTap('down')">
-              <text class="arrow">▼</text>
-            </view>
-            <!-- 左 -->
-            <view class="wheel-btn wheel-left" :class="{ active: activeDirection === 'left' }" @tap="onDirectionTap('left')">
-              <text class="arrow">◀</text>
-            </view>
-            <!-- 中心 -->
-            <view class="wheel-center">
-              <view class="center-dot" />
-            </view>
-          </view>
-        </view>
-        <view class="direction-label">
-          <text>舵角: {{ CurRudder }}°</text>
-        </view>
-      </view>
-
-      <!-- 中间：罗盘和地图 -->
-      <view class="compass-panel">
-        <view class="compass-container">
-          <!-- 罗盘外框 -->
-          <view class="compass-ring">
-            <text class="compass-dir compass-n">N</text>
-            <text class="compass-dir compass-e">E</text>
-            <text class="compass-dir compass-s">S</text>
-            <text class="compass-dir compass-w">W</text>
-            <!-- 十字线 -->
-            <view class="compass-cross-h" />
-            <view class="compass-cross-v" />
-            <!-- 船只图标 -->
-            <view class="ship-icon" :style="{ transform: `rotate(${shipRotate}deg)` }">
-              <image src="/static/images/ship0.png" class="ship-img" mode="aspectFit" />
-            </view>
-          </view>
-        </view>
-        <!-- 地图切换按钮 -->
-        <view class="map-toggle" @tap="toggleMapView">
-          <text>{{ showMap ? '罗盘' : '地图' }}</text>
-        </view>
-      </view>
-
-      <!-- 右侧：加减速控制 -->
-      <view class="speed-panel">
-        <view class="speed-btn speed-up" @tap="onSpeedUp" @longpress="onSpeedUpLong">
-          <text class="speed-label">加速</text>
-          <text class="speed-icon">＋</text>
-        </view>
-        <view class="speed-display">
-          <text class="speed-value">{{ UserSetPower }}</text>
-          <text class="speed-unit">%</text>
-        </view>
-        <view class="speed-btn speed-down" @tap="onSpeedDown" @longpress="onSpeedDownLong">
-          <text class="speed-label">减速</text>
-          <text class="speed-icon">－</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 底部状态栏 -->
-    <view class="status-bar">
-      <view class="status-left">
-        <view class="status-item">
-          <text class="status-label">功率:</text>
-          <text class="status-value">{{ CMD25_Data2Power }}W</text>
-        </view>
-        <view class="status-item">
-          <text class="status-label">电压:</text>
-          <text class="status-value">{{ CMD23_Data2BatteryVoltage }}V</text>
-        </view>
-        <view class="status-item">
-          <text class="status-label">速度:</text>
-          <text class="status-value">{{ SpeedKnot }}节</text>
-        </view>
-      </view>
-      <view class="status-right">
-        <view class="indicator" :class="LocalOK ? 'ok' : 'error'">主控</view>
-        <view class="indicator" :class="USVOnline ? 'ok' : 'error'">基站</view>
-        <view class="indicator" :class="RemoteOK ? 'ok' : 'error'">遥控</view>
-        <view class="settings-btn" @tap="showsettings">
-          <text>⚙</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 设置弹窗 -->
-    <view v-if="ShowSettings" class="settings-modal" @tap="showsettings">
-      <view class="settings-content" @tap.stop>
-        <view class="settings-title">设置</view>
-        <view class="settings-row">
-          <text>自动模式</text>
-          <switch :checked="EnableAuto" @change="autoChange" />
-        </view>
-        <view class="settings-row">
-          <text>加速度计控制</text>
-          <switch :checked="userAccelerometer" @change="userAccelerometerChange" />
-        </view>
-        <view class="settings-btns">
-          <button class="btn-primary" @tap="addWayPoint">添加航点</button>
-          <button class="btn-warning" @tap="deleteWayPoint">删除航点</button>
-          <button class="btn-danger" @tap="deleteAllWayPoint">清空航点</button>
-          <button class="btn-info" @tap="forceSetZPoint">设置零点</button>
-          <button class="btn-info" @tap="calibINS">标定磁力计</button>
-        </view>
-        <button class="btn-close" @tap="showsettings">关闭</button>
-      </view>
-    </view>
-
-    <!-- 隐藏的地图（用于航点管理） -->
+    <!-- 地图背景 -->
     <map
-      v-show="showMap"
       id="mapId"
-      class="hidden-map"
+      class="map-bg"
       :latitude="usvStore.crossmarker[0].latitude"
       :longitude="usvStore.crossmarker[0].longitude"
       :scale="mapscale"
@@ -143,6 +13,108 @@
       @markertap="onMarkerTap"
       @tap="onMapTap"
     />
+
+    <!-- 顶部标题栏 -->
+    <view class="header-bar">
+      <text class="header-title">云台控制</text>
+    </view>
+
+    <!-- 左侧：方向控制盘 -->
+    <view class="direction-panel">
+      <view class="direction-wheel" @touchstart="onWheelTouchStart" @touchmove="onWheelTouchMove" @touchend="onWheelTouchEnd">
+        <view class="wheel-outer">
+          <view class="wheel-btn wheel-up" :class="{ active: activeDirection === 'up' }" @tap="onDirectionTap('up')">
+            <text class="arrow">▲</text>
+          </view>
+          <view class="wheel-btn wheel-right" :class="{ active: activeDirection === 'right' }" @tap="onDirectionTap('right')">
+            <text class="arrow">▶</text>
+          </view>
+          <view class="wheel-btn wheel-down" :class="{ active: activeDirection === 'down' }" @tap="onDirectionTap('down')">
+            <text class="arrow">▼</text>
+          </view>
+          <view class="wheel-btn wheel-left" :class="{ active: activeDirection === 'left' }" @tap="onDirectionTap('left')">
+            <text class="arrow">◀</text>
+          </view>
+          <view class="wheel-center">
+            <view class="center-dot" />
+          </view>
+        </view>
+      </view>
+      <view class="direction-label">
+        <text>舵角: {{ CurRudder }}°</text>
+      </view>
+    </view>
+
+    <!-- 中间：罗盘 -->
+    <view class="compass-panel">
+      <view class="compass-ring">
+        <text class="compass-dir compass-n">N</text>
+        <text class="compass-dir compass-e">E</text>
+        <text class="compass-dir compass-s">S</text>
+        <text class="compass-dir compass-w">W</text>
+        <view class="compass-cross-h" />
+        <view class="compass-cross-v" />
+        <view class="ship-icon" :style="{ transform: `rotate(${shipRotate}deg)` }">
+          <image src="/static/images/ship0.png" class="ship-img" mode="aspectFit" />
+        </view>
+      </view>
+    </view>
+
+    <!-- 右侧：加减速控制 -->
+    <view class="speed-panel">
+      <view class="speed-btn speed-up" @tap="onSpeedUp" @longpress="onSpeedUpLong">
+        <text class="speed-label">加速</text>
+        <text class="speed-icon">＋</text>
+      </view>
+      <view class="speed-display">
+        <text class="speed-value">{{ UserSetPower }}</text>
+        <text class="speed-unit">%</text>
+      </view>
+      <view class="speed-btn speed-down" @tap="onSpeedDown" @longpress="onSpeedDownLong">
+        <text class="speed-label">减速</text>
+        <text class="speed-icon">－</text>
+      </view>
+    </view>
+
+    <!-- 底部状态栏 -->
+    <view class="status-bar">
+      <view class="status-item">
+        <text class="status-label">功率:</text>
+        <text class="status-value">{{ CMD25_Data2Power }}W</text>
+      </view>
+      <view class="status-item">
+        <text class="status-label">电压:</text>
+        <text class="status-value">{{ CMD23_Data2BatteryVoltage }}V</text>
+      </view>
+      <view class="status-item">
+        <text class="status-label">速度:</text>
+        <text class="status-value">{{ SpeedKnot }}节</text>
+      </view>
+      <view class="indicator" :class="LocalOK ? 'ok' : 'error'">主控</view>
+      <view class="indicator" :class="USVOnline ? 'ok' : 'error'">基站</view>
+      <view class="indicator" :class="RemoteOK ? 'ok' : 'error'">遥控</view>
+      <view class="settings-btn" @tap="showsettings">⚙</view>
+    </view>
+
+    <!-- 底部设置面板 -->
+    <view v-if="ShowSettings" class="settings-panel">
+      <view class="settings-row">
+        <view class="setting-item">
+          <text>自动</text>
+          <switch :checked="EnableAuto" @change="autoChange" />
+        </view>
+        <view class="setting-item">
+          <text>陀螺仪</text>
+          <switch :checked="userAccelerometer" @change="userAccelerometerChange" />
+        </view>
+        <view class="setting-btn" @tap="addWayPoint">添加点</view>
+        <view class="setting-btn warn" @tap="deleteWayPoint">删除点</view>
+        <view class="setting-btn danger" @tap="deleteAllWayPoint">清空</view>
+        <view class="setting-btn" @tap="forceSetZPoint">零点</view>
+        <view class="setting-btn" @tap="calibINS">标定</view>
+        <view class="setting-btn close" @tap="showsettings">✕</view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -188,7 +160,6 @@ const EnableAuto = ref(false)
 const mapscale = ref(10)
 const userAccelerometer = ref(true)
 const ShowSettings = ref(false)
-const showMap = ref(false)
 
 // 控制状态
 const CMD25_Data2Power = ref(0)
@@ -280,11 +251,6 @@ function onSpeedDownLong() {
   speedInterval = setInterval(() => {
     onSpeedDown()
   }, 100)
-}
-
-// 地图切换
-function toggleMapView() {
-  showMap.value = !showMap.value
 }
 
 // 更新航点显示
@@ -662,103 +628,104 @@ onUnmounted(() => {
 .page-container {
   width: 100vw;
   height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(180deg, #1a3a5c 0%, #0d1f33 100%);
+  position: relative;
   overflow: hidden;
+}
+
+/* 地图背景 */
+.map-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
 }
 
 /* 顶部标题栏 */
 .header-bar {
-  height: 40px;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 32px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 0 0 8px 8px;
+  z-index: 10;
 }
 
 .header-title {
-  font-size: 16px;
+  font-size: 14px;
   color: #fff;
   font-weight: bold;
   letter-spacing: 4px;
 }
 
-/* 主控制区域 */
-.control-area {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  padding: 10px;
-  gap: 10px;
-}
-
 /* 左侧方向控制盘 */
 .direction-panel {
-  width: 160px;
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  gap: 8px;
+  z-index: 10;
 }
 
 .direction-wheel {
-  width: 140px;
-  height: 140px;
-  position: relative;
+  width: 120px;
+  height: 120px;
 }
 
 .wheel-outer {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: linear-gradient(145deg, #2a5a8a, #1a3a5c);
-  border: 3px solid #4a9eff;
-  box-shadow: 0 0 20px rgba(74, 158, 255, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.5);
+  background: rgba(42, 90, 138, 0.8);
+  border: 2px solid #4a9eff;
+  box-shadow: 0 0 15px rgba(74, 158, 255, 0.4);
   position: relative;
 }
 
 .wheel-btn {
   position: absolute;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.wheel-btn.active {
-  transform: scale(1.1);
 }
 
 .wheel-btn.active .arrow {
   color: #4a9eff;
-  text-shadow: 0 0 10px #4a9eff;
+  text-shadow: 0 0 8px #4a9eff;
 }
 
 .arrow {
-  font-size: 20px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.7);
 }
 
-.wheel-up { top: 5px; left: 50%; transform: translateX(-50%); }
-.wheel-right { right: 5px; top: 50%; transform: translateY(-50%); }
-.wheel-down { bottom: 5px; left: 50%; transform: translateX(-50%); }
-.wheel-left { left: 5px; top: 50%; transform: translateY(-50%); }
+.wheel-up { top: 4px; left: 50%; transform: translateX(-50%); }
+.wheel-right { right: 4px; top: 50%; transform: translateY(-50%); }
+.wheel-down { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.wheel-left { left: 4px; top: 50%; transform: translateY(-50%); }
 
 .wheel-center {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #3a7abf, #2a5a8a);
+  background: rgba(58, 122, 191, 0.9);
   border: 2px solid #4a9eff;
   display: flex;
   align-items: center;
@@ -766,58 +733,55 @@ onUnmounted(() => {
 }
 
 .center-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #4a9eff;
-  box-shadow: 0 0 10px #4a9eff;
+  box-shadow: 0 0 8px #4a9eff;
 }
 
 .direction-label {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
 /* 中间罗盘 */
 .compass-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.compass-container {
-  width: 180px;
-  height: 180px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
 }
 
 .compass-ring {
-  width: 100%;
-  height: 100%;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
-  background: radial-gradient(circle, #1a3a5c 0%, #0d1f33 100%);
-  border: 3px solid #ff4444;
-  box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+  background: rgba(13, 31, 51, 0.85);
+  border: 2px solid #ff4444;
+  box-shadow: 0 0 15px rgba(255, 68, 68, 0.4);
   position: relative;
 }
 
 .compass-dir {
   position: absolute;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: bold;
   color: #fff;
 }
 
-.compass-n { top: 8px; left: 50%; transform: translateX(-50%); color: #ff4444; }
-.compass-e { right: 8px; top: 50%; transform: translateY(-50%); }
-.compass-s { bottom: 8px; left: 50%; transform: translateX(-50%); }
-.compass-w { left: 8px; top: 50%; transform: translateY(-50%); }
+.compass-n { top: 6px; left: 50%; transform: translateX(-50%); color: #ff4444; }
+.compass-e { right: 6px; top: 50%; transform: translateY(-50%); }
+.compass-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.compass-w { left: 6px; top: 50%; transform: translateY(-50%); }
 
 .compass-cross-h, .compass-cross-v {
   position: absolute;
-  background: rgba(255, 68, 68, 0.5);
+  background: rgba(255, 68, 68, 0.4);
 }
 
 .compass-cross-h {
@@ -838,10 +802,10 @@ onUnmounted(() => {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 60px;
-  height: 60px;
-  margin-left: -30px;
-  margin-top: -30px;
+  width: 50px;
+  height: 50px;
+  margin-left: -25px;
+  margin-top: -25px;
   transition: transform 0.3s;
 }
 
@@ -850,61 +814,43 @@ onUnmounted(() => {
   height: 100%;
 }
 
-.map-toggle {
-  position: absolute;
-  bottom: 10px;
-  padding: 6px 16px;
-  background: rgba(74, 158, 255, 0.3);
-  border: 1px solid #4a9eff;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 12px;
-}
-
 /* 右侧速度控制 */
 .speed-panel {
-  width: 100px;
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 15px;
+  gap: 10px;
+  z-index: 10;
 }
 
 .speed-btn {
-  width: 80px;
-  height: 50px;
-  border-radius: 8px;
+  width: 70px;
+  height: 40px;
+  border-radius: 6px;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
+  gap: 6px;
+  background: rgba(42, 90, 138, 0.8);
+  border: 2px solid #4a9eff;
 }
 
 .speed-btn:active {
   transform: scale(0.95);
 }
 
-.speed-up {
-  background: linear-gradient(145deg, #2a5a8a, #1a4a7a);
-  border: 2px solid #4a9eff;
-}
-
-.speed-down {
-  background: linear-gradient(145deg, #2a5a8a, #1a4a7a);
-  border: 2px solid #4a9eff;
-}
-
 .speed-label {
-  font-size: 14px;
+  font-size: 12px;
   color: #fff;
 }
 
 .speed-icon {
-  font-size: 18px;
+  font-size: 14px;
   color: #4a9eff;
   font-weight: bold;
 }
@@ -913,57 +859,59 @@ onUnmounted(() => {
   display: flex;
   align-items: baseline;
   gap: 2px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 4px 10px;
+  border-radius: 4px;
 }
 
 .speed-value {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: bold;
   color: #4a9eff;
 }
 
 .speed-unit {
-  font-size: 12px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 /* 底部状态栏 */
 .status-bar {
-  height: 36px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 15px;
-  background: rgba(0, 0, 0, 0.4);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.status-left, .status-right {
-  display: flex;
-  align-items: center;
+  justify-content: center;
   gap: 15px;
+  padding: 0 15px;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 10;
 }
 
 .status-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .status-label {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.6);
 }
 
 .status-value {
-  font-size: 12px;
+  font-size: 11px;
   color: #fff;
   font-weight: bold;
 }
 
 .indicator {
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 3px;
-  font-size: 11px;
+  font-size: 10px;
   color: #fff;
 }
 
@@ -977,98 +925,61 @@ onUnmounted(() => {
 }
 
 .settings-btn {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 4px;
-  font-size: 16px;
+  font-size: 14px;
   color: #fff;
-  cursor: pointer;
 }
 
-/* 设置弹窗 */
-.settings-modal {
-  position: fixed;
-  top: 0;
+/* 底部设置面板 */
+.settings-panel {
+  position: absolute;
+  bottom: 32px;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.settings-content {
-  width: 300px;
-  background: #1a3a5c;
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid #4a9eff;
-}
-
-.settings-title {
-  font-size: 18px;
-  color: #fff;
-  text-align: center;
-  margin-bottom: 20px;
-  font-weight: bold;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 8px 15px;
+  z-index: 20;
 }
 
 .settings-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
-  color: #fff;
-  font-size: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.settings-btns {
-  display: flex;
+  justify-content: center;
+  gap: 12px;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 15px;
 }
 
-.settings-btns button {
-  flex: 1 1 45%;
-  min-width: 100px;
-  height: 36px;
-  font-size: 12px;
-  border-radius: 6px;
-  border: none;
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
   color: #fff;
 }
 
-.btn-primary { background: #4a9eff; }
-.btn-warning { background: #ff9800; }
-.btn-danger { background: #ff4444; }
-.btn-info { background: #607d8b; }
-
-.btn-close {
-  width: 100%;
-  height: 40px;
-  margin-top: 15px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
+.setting-btn {
+  padding: 4px 10px;
+  background: #4a9eff;
+  border-radius: 4px;
+  font-size: 11px;
   color: #fff;
-  font-size: 14px;
 }
 
-/* 隐藏地图 */
-.hidden-map {
-  position: fixed;
-  top: 40px;
-  left: 0;
-  right: 0;
-  bottom: 36px;
-  z-index: 50;
+.setting-btn.warn {
+  background: #ff9800;
+}
+
+.setting-btn.danger {
+  background: #ff4444;
+}
+
+.setting-btn.close {
+  background: rgba(255, 255, 255, 0.2);
 }
 </style>
