@@ -62,11 +62,30 @@ export default defineConfig({
     ],
     ['pt-safe', { 'padding-top': 'env(safe-area-inset-top)' }],
     ['pb-safe', { 'padding-bottom': 'env(safe-area-inset-bottom)' }],
+    ['pl-safe', { 'padding-left': 'env(safe-area-inset-left)' }],
+    ['pr-safe', { 'padding-right': 'env(safe-area-inset-right)' }],
+    ['ml-safe', { 'margin-left': 'env(safe-area-inset-left)' }],
+    ['mr-safe', { 'margin-right': 'env(safe-area-inset-right)' }],
+    ['mt-safe', { 'margin-top': 'env(safe-area-inset-top)' }],
+    ['mb-safe', { 'margin-bottom': 'env(safe-area-inset-bottom)' }],
   ],
   theme: {
     colors: {
       /** 主题色，用法如: text-primary */
       primary: 'var(--wot-color-theme,#0957DE)',
+      /** 海洋主题蓝色 */
+      ocean: {
+        50: '#e3f2fd',
+        100: '#bbdefb',
+        200: '#90caf9',
+        300: '#64b5f6',
+        400: '#42a5f5',
+        500: '#2196f3',
+        600: '#1e88e5',
+        700: '#1976d2',
+        800: '#1565c0',
+        900: '#0d47a1',
+      },
     },
     fontSize: {
       /** 提供更小号的字体，用法如：text-2xs */
