@@ -16,6 +16,13 @@ page {
 .fixedHeight
 {
   flex: 0 0 auto;
+  padding: 16rpx 28rpx;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  flex-wrap: wrap;
+  backdrop-filter: blur(10rpx);
 }/* 自适应高度 */
 .autoFullHeight
 {
@@ -48,11 +55,23 @@ page {
 } 
 
 .page-body-title{
-   display: inline-table;
-   width: 150px;
+   display: inline-flex;
+   width: 180px;
+   font-size: 28rpx;
+   color: #fff;
+   align-items: center;
 }
 .page-info{
-  display: inline-flex;width: 100px;
+  display: inline-flex;
+  width: 140px;
+  font-size: 30rpx;
+  color: #fff;
+  align-items: center;
+  gap: 6rpx;
+  padding: 8rpx 14rpx;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8rpx;
+  font-weight: 500;
 }
 .page-checkbox{
  justify-content: center;
@@ -61,11 +80,30 @@ page {
 
 
 .page-info-right{
-  right: 0px;
+  right: 20rpx;
   position: absolute;
   display: inline-flex;
   width: 100px;
-  justify-content:center;
+  justify-content: center;
+  font-size: 26rpx;
+  color: #fff;
+  padding: 6rpx 12rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8rpx;
+  font-weight: 600;
+}
+
+/* 状态指示器 */
+fixedHeight text[style*="background-color"] {
+  padding: 12rpx 24rpx;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
 }
 
 .power-info{

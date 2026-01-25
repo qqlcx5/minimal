@@ -1,5 +1,12 @@
 <template>
   <view class="page-container">
+    <!-- 返回按钮 -->
+    <view class="back-btn" @tap="goBack">
+      <view class="back-icon">
+        <view class="arrow-left" />
+      </view>
+    </view>
+
     <!-- 地图背景 -->
     <map
       id="mapId"
@@ -13,11 +20,6 @@
       @markertap="onMarkerTap"
       @tap="onMapTap"
     />
-
-    <!-- 顶部标题栏 -->
-    <view class="header-bar">
-      <text class="header-title">云台控制</text>
-    </view>
 
     <!-- 左侧：方向控制盘 -->
     <view class="direction-panel">
@@ -94,10 +96,18 @@
         <text class="status-label">速度:</text>
         <text class="status-value">{{ SpeedKnot }}节</text>
       </view>
-      <view class="indicator" :class="LocalOK ? 'ok' : 'error'">主控</view>
-      <view class="indicator" :class="USVOnline ? 'ok' : 'error'">基站</view>
-      <view class="indicator" :class="RemoteOK ? 'ok' : 'error'">遥控</view>
-      <view class="settings-btn" @tap="showsettings">⚙</view>
+      <view class="indicator" :class="LocalOK ? 'ok' : 'error'">
+        主控
+      </view>
+      <view class="indicator" :class="USVOnline ? 'ok' : 'error'">
+        基站
+      </view>
+      <view class="indicator" :class="RemoteOK ? 'ok' : 'error'">
+        遥控
+      </view>
+      <view class="settings-btn" @tap="showsettings">
+        ⚙
+      </view>
     </view>
 
     <!-- 底部设置面板 -->
@@ -111,12 +121,24 @@
           <text>陀螺仪</text>
           <switch :checked="userAccelerometer" @change="userAccelerometerChange" />
         </view>
-        <view class="setting-btn" @tap="addWayPoint">添加点</view>
-        <view class="setting-btn warn" @tap="deleteWayPoint">删除点</view>
-        <view class="setting-btn danger" @tap="deleteAllWayPoint">清空</view>
-        <view class="setting-btn" @tap="forceSetZPoint">零点</view>
-        <view class="setting-btn" @tap="calibINS">标定</view>
-        <view class="setting-btn close" @tap="showsettings">✕</view>
+        <view class="setting-btn" @tap="addWayPoint">
+          添加点
+        </view>
+        <view class="setting-btn warn" @tap="deleteWayPoint">
+          删除点
+        </view>
+        <view class="setting-btn danger" @tap="deleteAllWayPoint">
+          清空
+        </view>
+        <view class="setting-btn" @tap="forceSetZPoint">
+          零点
+        </view>
+        <view class="setting-btn" @tap="calibINS">
+          标定
+        </view>
+        <view class="setting-btn close" @tap="showsettings">
+          ✕
+        </view>
       </view>
     </view>
   </view>
@@ -329,7 +351,8 @@ function startInter() {
 }
 
 function writeBLECharacteristicValue() {
-  if (!deviceId.value || !serviceId.value || !characteristicId.value) return
+  if (!deviceId.value || !serviceId.value || !characteristicId.value)
+    return
   const ship = usvStore.ships[shipid]
   const arr = getTxBuf(shipid, UserSetPower.value, -ship.rudder)
   const buffer = new Uint8Array(arr).buffer
@@ -340,14 +363,16 @@ function writeBLECharacteristicValue() {
     value: buffer as any,
     fail: () => {
       timeout++
-      if (timeout > 1) reconnectBLE()
+      if (timeout > 1)
+        reconnectBLE()
     },
     success: () => { timeout = 0 },
   })
 }
 
 function reconnectBLE() {
-  if (!connectedDeviceId.value || connectedDeviceId.value === '0') return
+  if (!connectedDeviceId.value || connectedDeviceId.value === '0')
+    return
   uni.createBLEConnection({
     deviceId: connectedDeviceId.value,
     success: () => {
@@ -358,7 +383,8 @@ function reconnectBLE() {
 }
 
 function getBLEDeviceServices(deviceIdParam: string) {
-  if (!deviceIdParam || deviceIdParam === '0') return
+  if (!deviceIdParam || deviceIdParam === '0')
+    return
   uni.getBLEDeviceServices({
     deviceId: deviceIdParam,
     success: (res) => {
@@ -411,13 +437,15 @@ function getBLEDeviceCharacteristics(deviceIdParam: string, serviceIdParam: stri
 function onBLEDateReceiverd() {
   uni.onBLECharacteristicValueChange((characteristic) => {
     const buffer = characteristic.value as unknown as ArrayBuffer
-    if (buffer.byteLength < 5) return
+    if (buffer.byteLength < 5)
+      return
     const view = new DataView(buffer)
     const arr: number[] = []
     for (let i = 0; i < view.byteLength - 2; i++) arr.push(view.getInt8(i))
     const calcCrc = compute(arr, arr.length)
     const recCrc = view.getInt16(view.byteLength - 2, false) & 0xFFFF
-    if (calcCrc !== recCrc) return
+    if (calcCrc !== recCrc)
+      return
 
     const id = view.getUint8(0)
     if (id === shipid) {
@@ -436,7 +464,8 @@ function onBLEDateReceiverd() {
         if (ship.points.length === 0 || getRealDistance(result[0], result[1], ship.points[ship.points.length - 1].longitude, ship.points[ship.points.length - 1].latitude) > 8) {
           ship.points = ship.points.concat(point)
         }
-        if (ship.points.length > 500) ship.points = ship.points.slice(1)
+        if (ship.points.length > 500)
+          ship.points = ship.points.slice(1)
         ship.ship.rotate = view.getInt16(4, true) / 10.0
         ship.ship.longitude = result[0]
         ship.ship.latitude = result[1]
@@ -495,7 +524,7 @@ function startUpdateWayPointLocal() {
 
 function updateWayPointLocal(id: number, lng: number, lat: number) {
   let ok = false
-  usvStore.ships[shipid].waypoints.forEach(item => {
+  usvStore.ships[shipid].waypoints.forEach((item) => {
     if (item.id === id) { ok = true; item.latitude = lat; item.longitude = lng; updatewaypoints() }
   })
   if (!ok) {
@@ -507,7 +536,8 @@ function updateWayPointLocal(id: number, lng: number, lat: number) {
 
 function endUpdateWayPointLocal() {
   for (let i = usvStore.ships[shipid].waypoints.length - 1; i >= 0; i--) {
-    if (!usvStore.ships[shipid].waypoints[i].updated) usvStore.ships[shipid].waypoints.splice(i, 1)
+    if (!usvStore.ships[shipid].waypoints[i].updated)
+      usvStore.ships[shipid].waypoints.splice(i, 1)
   }
   updatewaypoints()
 }
@@ -525,13 +555,17 @@ function userAccelerometerChange(e: any) {
 function forceSetZPoint() { setForceSetZPoint(shipid); uni.showToast({ title: '已设置', icon: 'success' }) }
 function calibINS() { setCalibINS(shipid); uni.showToast({ title: '开始标定', icon: 'success' }) }
 function showsettings() { ShowSettings.value = !ShowSettings.value }
+function goBack() {
+  uni.navigateBack()
+}
 
 function addWayPoint() {
   const mapCtx = uni.createMapContext('mapId')
   mapCtx.getCenterLocation({
     success: (res) => {
       let id = 0
-      if (usvStore.ships[shipid].waypoints.length > 0) id = usvStore.ships[shipid].waypoints[usvStore.ships[shipid].waypoints.length - 1].id + 1
+      if (usvStore.ships[shipid].waypoints.length > 0)
+        id = usvStore.ships[shipid].waypoints[usvStore.ships[shipid].waypoints.length - 1].id + 1
       const point: WayPoint = { id, anchor: { x: 0.5, y: 1 }, iconPath: '/static/images/reddotmark.png', width: 20, height: 20, latitude: res.latitude, longitude: res.longitude, selected: false, updated: false }
       usvStore.addWayPoint(shipid, point)
       updatewaypoints()
@@ -553,7 +587,8 @@ function deleteWayPoint() {
 
 function deleteAllWayPoint() {
   uni.showModal({
-    title: '确认', content: '删除所有航点？',
+    title: '确认',
+    content: '删除所有航点？',
     success: (res) => {
       if (res.confirm) {
         stm32DeleteAllWayPoint(shipid)
@@ -565,8 +600,8 @@ function deleteAllWayPoint() {
 }
 
 function onMapTap() {
-  usvStore.ships[shipid].waypoints.forEach(item => { item.width = 20; item.height = 20; item.selected = false })
-  usvStore.ships.forEach(sp => { sp.ship.width = 30; sp.ship.height = 30 })
+  usvStore.ships[shipid].waypoints.forEach((item) => { item.width = 20; item.height = 20; item.selected = false })
+  usvStore.ships.forEach((sp) => { sp.ship.width = 30; sp.ship.height = 30 })
   usvStore.ships[shipid].ship.width = 45
   usvStore.ships[shipid].ship.height = 45
   updatewaypoints()
@@ -574,7 +609,7 @@ function onMapTap() {
 }
 
 function onMarkerTap(e: any) {
-  usvStore.ships[shipid].waypoints.forEach(item => {
+  usvStore.ships[shipid].waypoints.forEach((item) => {
     item.width = 20; item.height = 20; item.selected = false
     if (e.markerId === item.id) { item.width = 25; item.height = 25; item.selected = true }
   })
@@ -594,7 +629,7 @@ function onRegionChange(event: any) {
     const mapCtx = uni.createMapContext('mapId')
     mapCtx.getCenterLocation({
       success: (res) => {
-        usvStore.ships[shipid].waypoints.forEach(item => {
+        usvStore.ships[shipid].waypoints.forEach((item) => {
           if (item.selected) {
             item.latitude = res.latitude
             item.longitude = res.longitude
@@ -612,12 +647,16 @@ function onRegionChange(event: any) {
 }
 
 function onAccelerometerChange(res: any) {
-  if (!userAccelerometer.value || !getEnableManual(shipid)) return
+  if (!userAccelerometer.value || !getEnableManual(shipid))
+    return
   let result = 0
   const value = res.y * 100
-  if (value < -15 || value > 15) result = value
-  if (result < 0) result += 15
-  else if (result > 0) result -= 15
+  if (value < -15 || value > 15)
+    result = value
+  if (result < 0)
+    result += 15
+  else if (result > 0)
+    result -= 15
   result = Number((-(result * 3)).toFixed(0))
   const ship = usvStore.ships[shipid]
   if (result === 0 || Math.abs(Number(ship.rudder) - result) > 2) {
@@ -655,8 +694,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (interval) clearInterval(interval)
-  if (speedInterval) clearInterval(speedInterval)
+  if (interval)
+    clearInterval(interval)
+  if (speedInterval)
+    clearInterval(speedInterval)
   uni.stopBluetoothDevicesDiscovery()
   if (connectedDeviceId.value && connectedDeviceId.value !== '0') {
     uni.closeBLEConnection({ deviceId: connectedDeviceId.value })
@@ -671,6 +712,47 @@ onUnmounted(() => {
   height: 100vh;
   position: relative;
   overflow: hidden;
+}
+
+/* 返回按钮 */
+.back-btn {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  width: 44px;
+  height: 44px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  transition: all 0.2s ease;
+}
+
+.back-btn:active {
+  background: rgba(0, 0, 0, 0.7);
+  transform: scale(0.92);
+}
+
+.back-icon {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arrow-left {
+  width: 12px;
+  height: 12px;
+  border-left: 3px solid #fff;
+  border-bottom: 3px solid #fff;
+  transform: rotate(45deg);
+  margin-left: 4px;
 }
 
 /* 地图背景 */
@@ -709,9 +791,8 @@ onUnmounted(() => {
 /* 左侧方向控制盘 */
 .direction-panel {
   position: absolute;
-  left: 15px;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 40px;
+  bottom: 70px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -720,8 +801,8 @@ onUnmounted(() => {
 }
 
 .direction-wheel {
-  width: 120px;
-  height: 120px;
+  width: 160px;
+  height: 160px;
 }
 
 .wheel-outer {
@@ -736,8 +817,8 @@ onUnmounted(() => {
 
 .wheel-btn {
   position: absolute;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -753,10 +834,26 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
 }
 
-.wheel-up { top: 4px; left: 50%; transform: translateX(-50%); }
-.wheel-right { right: 4px; top: 50%; transform: translateY(-50%); }
-.wheel-down { bottom: 4px; left: 50%; transform: translateX(-50%); }
-.wheel-left { left: 4px; top: 50%; transform: translateY(-50%); }
+.wheel-up {
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.wheel-right {
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.wheel-down {
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.wheel-left {
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
 
 .wheel-center {
   position: absolute;
@@ -790,15 +887,15 @@ onUnmounted(() => {
 /* 中间罗盘 */
 .compass-panel {
   position: absolute;
-  top: 50%;
+  bottom: 90px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   z-index: 10;
 }
 
 .compass-ring {
-  width: 140px;
-  height: 140px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: rgba(13, 31, 51, 0.85);
   border: 2px solid #ff4444;
@@ -813,12 +910,30 @@ onUnmounted(() => {
   color: #fff;
 }
 
-.compass-n { top: 6px; left: 50%; transform: translateX(-50%); color: #ff4444; }
-.compass-e { right: 6px; top: 50%; transform: translateY(-50%); }
-.compass-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
-.compass-w { left: 6px; top: 50%; transform: translateY(-50%); }
+.compass-n {
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ff4444;
+}
+.compass-e {
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.compass-s {
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.compass-w {
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
 
-.compass-cross-h, .compass-cross-v {
+.compass-cross-h,
+.compass-cross-v {
   position: absolute;
   background: rgba(255, 68, 68, 0.4);
 }

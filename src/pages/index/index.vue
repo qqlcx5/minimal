@@ -195,6 +195,89 @@ function getRssiPercent(rssi?: number): number {
   return Math.max(0, rssi + 100)
 }
 
+/**
+ * 获取设备友好名称
+ */
+function getDeviceDisplayName(device: BluetoothDevice): string {
+  const rawName = device.name || device.localName || ''
+
+  // 根据设备名称识别设备类型
+  if (rawName.toUpperCase().includes('USV') || rawName.toUpperCase().includes('SHIP') || rawName.toUpperCase().includes('BOAT')) {
+    return `USV 设备 (${rawName})`
+  }
+  if (rawName.toUpperCase().includes('HC') || rawName.toUpperCase().includes('BLK') || rawName.toUpperCase().includes('BLE')) {
+    return `蓝牙模块 (${rawName})`
+  }
+  if (rawName.toUpperCase().includes('STM')) {
+    return `控制模块 (${rawName})`
+  }
+
+  // 如果有名称，直接返回
+  if (rawName) {
+    return rawName
+  }
+
+  return '未知设备'
+}
+
+/**
+ * 获取设备类型标识
+ */
+function getDeviceType(device: BluetoothDevice): string {
+  const rawName = (device.name || device.localName || '').toUpperCase()
+
+  if (rawName.includes('USV') || rawName.includes('SHIP') || rawName.includes('BOAT')) {
+    return 'usv'
+  }
+  if (rawName.includes('HC') || rawName.includes('BLK') || rawName.includes('BLE')) {
+    return 'bluetooth'
+  }
+  if (rawName.includes('STM')) {
+    return 'control'
+  }
+
+  return 'unknown'
+}
+
+/**
+ * 获取信号强度等级
+ */
+function getSignalLevel(rssi?: number): string {
+  if (rssi === undefined) return 'weak'
+  if (rssi >= -50) return 'excellent'
+  if (rssi >= -60) return 'good'
+  if (rssi >= -70) return 'fair'
+  return 'weak'
+}
+
+/**
+ * 获取设备类型文本
+ */
+function getDeviceTypeText(device: BluetoothDevice): string {
+  const type = getDeviceType(device)
+  const typeMap: Record<string, string> = {
+    usv: 'USV',
+    bluetooth: '蓝牙',
+    control: '控制',
+    unknown: '其他',
+  }
+  return typeMap[type] || '其他'
+}
+
+/**
+ * 获取信号强度文本
+ */
+function getSignalText(rssi?: number): string {
+  const level = getSignalLevel(rssi)
+  const textMap: Record<string, string> = {
+    excellent: '优秀',
+    good: '良好',
+    fair: '一般',
+    weak: '较弱',
+  }
+  return textMap[level] || ''
+}
+
 onMounted(() => {
   // 初始化存储数据
   usvStore.initFromStorage()
@@ -232,36 +315,37 @@ onUnmounted(() => {
         v-for="(device, index) in devices"
         :key="index"
         class="device-item"
+        :class="{ 'device-usv': getDeviceType(device) === 'usv' }"
         @click="createBLEConnection(device)"
       >
-        <view class="device-icon">
+        <view class="device-icon" :class="`icon-${getDeviceType(device)}`">
           <wd-icon name="bluetooth" size="24px" />
         </view>
         <view class="device-info">
-          <view class="device-name">
-            {{ device.name || device.localName || '未知设备' }}
+          <view class="device-name-row">
+            <view class="device-name">
+              {{ getDeviceDisplayName(device) }}
+            </view>
+            <view class="device-tag" :class="`tag-${getDeviceType(device)}`">
+              {{ getDeviceTypeText(device) }}
+            </view>
           </view>
           <view class="device-details">
             <view class="detail-item">
-              <text class="label">信号强度:</text>
+              <text class="label">信号:</text>
               <view class="signal-bar">
                 <view
                   class="signal-fill"
+                  :class="`signal-${getSignalLevel(device.RSSI)}`"
                   :style="{ width: `${getRssiPercent(device.RSSI)}%` }"
                 />
               </view>
               <text class="value">{{ device.RSSI }}dBm</text>
+              <text class="signal-text">{{ getSignalText(device.RSSI) }}</text>
             </view>
             <view class="detail-item">
-              <text class="label">UUID:</text>
-              <text class="value">{{ device.deviceId.substring(0, 20) }}...</text>
-            </view>
-            <view
-              v-if="device.advertisServiceUUIDs"
-              class="detail-item"
-            >
-              <text class="label">服务数量:</text>
-              <text class="value">{{ device.advertisServiceUUIDs.length }}</text>
+              <text class="label">ID:</text>
+              <text class="value">{{ device.deviceId.substring(0, 8) }}...</text>
             </view>
           </view>
         </view>
@@ -334,12 +418,18 @@ onUnmounted(() => {
 .device-item {
   background: #ffffff;
   border-radius: 16rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
   display: flex;
   align-items: center;
   box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
   transition: all 0.3s;
+  border: 2rpx solid transparent;
+}
+
+.device-item.device-usv {
+  border-color: #4a9eff;
+  background: linear-gradient(to right, #f0f7ff, #ffffff);
 }
 
 .device-item:active {
@@ -348,51 +438,107 @@ onUnmounted(() => {
 }
 
 .device-icon {
-  width: 80rpx;
-  height: 80rpx;
+  width: 72rpx;
+  height: 72rpx;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-right: 24rpx;
+  margin-right: 20rpx;
   color: #ffffff;
+  flex-shrink: 0;
+}
+
+.device-icon.icon-usv {
+  background: linear-gradient(135deg, #4a9eff 0%, #2563eb 100%);
+  width: 80rpx;
+  height: 80rpx;
+}
+
+.device-icon.icon-bluetooth {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.device-icon.icon-control {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
 .device-info {
   flex: 1;
+  min-width: 0;
+}
+
+.device-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
 }
 
 .device-name {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: bold;
   color: #333333;
-  margin-bottom: 16rpx;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-tag {
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.device-tag.tag-usv {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.device-tag.tag-bluetooth {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.device-tag.tag-control {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.device-tag.tag-unknown {
+  background: #f3f4f6;
+  color: #6b7280;
 }
 
 .device-details {
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 
 .detail-item {
   display: flex;
   align-items: center;
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #666666;
 }
 
 .label {
-  margin-right: 8rpx;
+  margin-right: 6rpx;
+  color: #9ca3af;
+  font-size: 20rpx;
 }
 
 .signal-bar {
-  width: 120rpx;
+  width: 100rpx;
   height: 8rpx;
-  background: #e0e0e0;
+  background: #e5e7eb;
   border-radius: 4rpx;
-  margin: 0 16rpx;
+  margin: 0 10rpx;
   overflow: hidden;
 }
 
@@ -402,12 +548,36 @@ onUnmounted(() => {
   transition: width 0.3s;
 }
 
+.signal-fill.signal-excellent {
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+}
+
+.signal-fill.signal-good {
+  background: linear-gradient(90deg, #4ade80 0%, #22c55e 100%);
+}
+
+.signal-fill.signal-fair {
+  background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.signal-fill.signal-weak {
+  background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
+}
+
+.signal-text {
+  margin-left: 6rpx;
+  font-size: 20rpx;
+  color: #9ca3af;
+}
+
 .value {
-  color: #999999;
+  color: #6b7280;
+  font-size: 20rpx;
 }
 
 .device-action {
-  color: #999999;
+  color: #d1d5db;
+  margin-left: 12rpx;
 }
 
 .empty-state {
